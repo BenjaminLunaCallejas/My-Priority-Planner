@@ -124,7 +124,7 @@
                     <h3 id="weekLabel" class="text-white font-bold text-sm tracking-wide"></h3>
                     <button onclick="navigateTime(1)" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs text-white">→</button>
                 </div>
-                <main class="w-full bg-slate-900/50 rounded-xl flex overflow-x-auto gap-4 p-2 pb-6 h-full items-start border border-slate-800" id="kanbanBoard"></main>
+                <main class="w-full bg-slate-900/50 rounded-xl p-2 pb-6 h-full border border-slate-800 overflow-y-auto" id="kanbanBoard"></main>
             </div>
         </div>
     </div>
@@ -160,8 +160,8 @@
     <script>
         window.tasks = JSON.parse(localStorage.getItem('priorityTasksPro')) || [];
         let expandedTasks = new Set();
-        let currentView = 'week'; // 'day', 'week', 'month'
-        let baseDate = new Date(); // Fecha de referencia para la navegación
+        let currentView = 'week';
+        let baseDate = new Date();
 
         const toLocalISO = (date) => {
             const z = n => ('0' + n).slice(-2);
@@ -176,8 +176,6 @@
         }
 
         const weekDays = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
-
-        // --- NUEVAS FUNCIONES DE VISTA Y ENLACE ---
 
         function changeView(view) {
             currentView = view;
@@ -209,14 +207,12 @@
             if (taskId) {
                 const idNum = parseInt(taskId);
                 expandedTasks.add(idNum);
-                // Intentamos encontrar la fecha de la tarea para mover la vista ahí
                 const task = window.tasks.find(t => t.id === idNum);
                 if (task && task.startDate) {
                     const [y, m, d] = task.startDate.split('-');
                     baseDate = new Date(y, m - 1, d);
                 }
                 renderKanban();
-                // Pequeño delay para scroll
                 setTimeout(() => {
                     const element = document.getElementById(`task-${taskId}`);
                     if (element) {
@@ -226,8 +222,6 @@
                 }, 500);
             }
         }
-
-        // --- ACCIONES ORIGINALES ---
 
         function handleAddTask() {
             const task = gatherFormData('mainForm');
@@ -339,8 +333,6 @@
             saveAndRender();
         }
 
-        // --- RENDERIZADO MEJORADO ---
-
         function createDeepTaskHTML(t, level = 0) {
             const hasSubtasks = t.subtasks && t.subtasks.length > 0;
             const isExpanded = expandedTasks.has(t.id);
@@ -351,41 +343,27 @@
                 <div id="task-${t.id}" class="task-card bg-slate-900 p-2 rounded-lg border-l-4 ${colorClass} shadow-md mb-2">
                     <div class="flex justify-between items-start">
                         <div class="cursor-pointer flex-grow" onclick="toggleTaskExpansion(${t.id})">
-                            <p class="text-xs font-semibold text-slate-100 flex items-center gap-1">
-                                ${hasSubtasks ? `<span class="text-[9px]">${isExpanded ? '▼' : '▶'}</span>` : ''}
+                            <p class="text-[10px] sm:text-xs font-semibold text-slate-100 flex items-center gap-1">
+                                ${hasSubtasks ? `<span class="text-[8px]">${isExpanded ? '▼' : '▶'}</span>` : ''}
                                 ${t.title}
-                                ${hasNotes ? `<span title="Tiene notas" class="text-sky-400 text-[10px]">📝</span>` : ''}
                             </p>
-                            ${t.time ? `<span class="text-[9px] bg-slate-800 text-sky-400 px-1 rounded">🕒 ${t.time}</span>` : ''}
+                            ${t.time ? `<span class="text-[8px] bg-slate-800 text-sky-400 px-1 rounded">🕒 ${t.time}</span>` : ''}
                         </div>
                         <div class="flex gap-1">
-                            <button onclick="shareTask(${t.id})" title="Copiar enlace de rastreo" class="text-[10px] bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded hover:bg-sky-500 hover:text-white transition">🔗</button>
-                            <button onclick="openSubtaskModal(${t.id}, '${t.title}')" class="text-[10px] bg-sky-900/40 text-sky-400 px-1.5 py-0.5 rounded hover:bg-sky-500 hover:text-white transition">+</button>
-                            <button onclick="completeTask(${t.id})" class="text-[10px] bg-emerald-900/40 text-emerald-400 px-1.5 py-0.5 rounded hover:bg-emerald-500 hover:text-white transition">✓</button>
-                            <button onclick="deleteTask(${t.id})" class="text-[10px] bg-red-900/40 text-red-400 px-1.5 py-0.5 rounded hover:bg-red-500 hover:text-white transition">×</button>
+                            <button onclick="shareTask(${t.id})" class="text-[9px] bg-slate-700 p-0.5 rounded">🔗</button>
+                            <button onclick="completeTask(${t.id})" class="text-[9px] bg-emerald-900/40 text-emerald-400 p-0.5 rounded">✓</button>
                         </div>
                     </div>
-                    
                     ${isExpanded ? `
                         <div class="mt-2 space-y-2">
-                            <textarea 
-                                oninput="updateNote(${t.id}, this.value)"
-                                placeholder="Escribe notas o pega enlaces aquí..." 
-                                class="notes-area w-full bg-slate-950/50 p-2 rounded border border-slate-800 text-slate-400 outline-none focus:border-sky-500/50 resize-none h-14"
-                            >${t.notes || ""}</textarea>
-                            
-                            ${hasSubtasks ? `
-                                <div class="subtask-container">
-                                    ${t.subtasks.filter(s => !s.completed).map(s => createDeepTaskHTML(s, level + 1)).join('')}
-                                </div>
-                            ` : ''}
-                        </div>
-                    ` : ''}
-                </div>
-            `;
+                            <textarea oninput="updateNote(${t.id}, this.value)" class="notes-area w-full bg-slate-950/50 p-1 rounded border border-slate-800 text-slate-400 outline-none h-12 resize-none">${t.notes || ""}</textarea>
+                            ${hasSubtasks ? `<div class="subtask-container">${t.subtasks.filter(s => !s.completed).map(s => createDeepTaskHTML(s, level + 1)).join('')}</div>` : ''}
+                        </div>` : ''}
+                </div>`;
             return html;
         }
 
+        // --- RENDERIZADO CON GRID PARA VISTA MENSUAL ---
         function renderKanban() {
             const board = document.getElementById('kanbanBoard');
             board.innerHTML = '';
@@ -396,12 +374,16 @@
             if (currentView === 'day') {
                 startDate = new Date(baseDate);
                 iterations = 1;
+                board.className = "w-full bg-slate-900/50 rounded-xl flex justify-center p-2 pb-6 h-full border border-slate-800";
             } else if (currentView === 'week') {
                 startDate = getMonday(baseDate);
                 iterations = 7;
+                board.className = "w-full bg-slate-900/50 rounded-xl flex overflow-x-auto gap-4 p-2 pb-6 h-full items-start border border-slate-800";
             } else {
                 startDate = new Date(baseDate.getFullYear(), baseDate.getMonth(), 1);
                 iterations = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 0).getDate();
+                // Layout de Cuadro Completo (Grid) para el mes
+                board.className = "w-full bg-slate-900/50 rounded-xl grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 p-2 pb-6 border border-slate-800 overflow-y-auto";
             }
 
             for (let i = 0; i < iterations; i++) {
@@ -415,13 +397,19 @@
                     return t.isRecurring ? (t.days.includes(dayName) && colISO >= t.startDate) : (t.startDate === colISO);
                 }).sort((a,b) => b.score - a.score);
 
+                // Ajuste de ancho según vista
+                let colWidthClass = currentView === 'month' ? 'w-full' : 'min-w-[260px] w-[260px]';
+
                 let colHtml = `
-                    <div class="min-w-[260px] w-[260px] bg-slate-800/80 rounded-xl flex flex-col border ${colISO === todayISO ? 'border-sky-500' : 'border-slate-700'} h-full shrink-0">
-                        <div class="p-3 border-b border-slate-700">
-                            <h3 class="font-bold text-xs ${colISO === todayISO ? 'text-sky-400' : 'text-slate-300'}">${dayName}</h3>
-                            <p class="text-[10px] text-slate-500">${colDate.toLocaleDateString()}</p>
+                    <div class="${colWidthClass} bg-slate-800/80 rounded-xl flex flex-col border ${colISO === todayISO ? 'border-sky-500' : 'border-slate-700'} h-full shrink-0 min-h-[150px]">
+                        <div class="p-2 border-b border-slate-700 flex justify-between items-center">
+                            <div>
+                                <h3 class="font-bold text-[10px] ${colISO === todayISO ? 'text-sky-400' : 'text-slate-300'}">${dayName.toUpperCase()} ${colDate.getDate()}</h3>
+                                <p class="text-[8px] text-slate-500">${colDate.toLocaleDateString()}</p>
+                            </div>
+                            ${dayTasks.length > 0 ? `<span class="bg-sky-500/20 text-sky-400 text-[8px] px-1.5 rounded-full">${dayTasks.length}</span>` : ''}
                         </div>
-                        <div class="p-2 overflow-y-auto flex-grow">
+                        <div class="p-1 overflow-y-auto flex-grow">
                             ${dayTasks.map(t => createDeepTaskHTML(t)).join('')}
                         </div>
                     </div>
@@ -431,7 +419,6 @@
             
             const endDate = new Date(startDate);
             endDate.setDate(endDate.getDate() + (iterations - 1));
-            
             const label = currentView === 'month' 
                 ? baseDate.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })
                 : `${startDate.toLocaleDateString('es-ES', {day:'numeric', month:'short'})} - ${endDate.toLocaleDateString('es-ES', {day:'numeric', month:'short'})}`;
@@ -463,7 +450,6 @@
             document.querySelectorAll(`#${id} input[type="text"], #${id} textarea`).forEach(i => i.value = "");
         }
 
-        // Ejecución inicial
         renderKanban();
         renderCompleted();
         checkUrlParams();
@@ -506,7 +492,7 @@
                     window.tasks = docSnap.data().tasks;
                     renderKanban();
                     renderCompleted();
-                    checkUrlParams(); // Re-verificar tras cargar datos de la nube
+                    checkUrlParams();
                 }
             }
         });
