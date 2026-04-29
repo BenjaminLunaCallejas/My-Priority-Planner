@@ -8,35 +8,36 @@
     <style>
         .task-card { transition: transform 0.2s ease, opacity 0.3s; }
         .task-card:hover { transform: translateY(-2px); }
-        body { background-color: #0f172a; color: #f8fafc; }
+        body { background-color: #0f172a; color: #f8fafc; overflow: hidden; }
         
-        ::-webkit-scrollbar { height: 12px; width: 8px; }
-        ::-webkit-scrollbar-track { background: #1e293b; border-radius: 8px; margin: 0px 4px;}
+        /* Scrollbar Global y para contenedores */
+        ::-webkit-scrollbar { height: 8px; width: 6px; }
+        ::-webkit-scrollbar-track { background: #1e293b; border-radius: 8px; }
         ::-webkit-scrollbar-thumb { background: #475569; border-radius: 8px; border: 2px solid #1e293b;}
         ::-webkit-scrollbar-thumb:hover { background: #64748b; }
 
         #authOverlay { background: rgba(15, 23, 42, 0.98); backdrop-filter: blur(10px); z-index: 100; }
-        .subtask-container { border-left: 2px solid #334155; margin-left: 0.75rem; padding-left: 0.5rem; }
+        .subtask-container { border-left: 2px solid #334155; margin-left: 0.5rem; padding-left: 0.5rem; margin-top: 0.5rem; }
         .notes-area { scrollbar-width: thin; font-size: 11px; }
         
+        /* Grid para el calendario mensual */
         .calendar-grid { 
             display: grid; 
-            grid-template-columns: repeat(7, minmax(140px, 1fr)); 
+            grid-template-columns: repeat(7, minmax(150px, 1fr)); 
             gap: 0.5rem; 
             width: 100%;
+            padding-bottom: 2rem;
         }
 
-        /* Resaltado para tarea rastreada */
         .highlight-task { border: 2px solid #38bdf8 !important; box-shadow: 0 0 15px rgba(56, 189, 248, 0.5); }
     </style>
 </head>
-<body class="p-4 md:p-8 h-screen flex flex-col">
+<body class="p-4 md:p-6 h-screen flex flex-col">
 
     <div id="authOverlay" class="fixed inset-0 flex flex-col justify-center items-center">
         <div class="bg-slate-800 p-8 rounded-2xl border border-slate-700 shadow-2xl text-center max-w-sm w-full mx-4">
             <h2 class="text-2xl font-bold text-sky-400 mb-2">Hub Ciencia Emprende</h2>
-            <p class="text-slate-400 mb-6 text-sm">Inicia sesión para acceder a tu planificador personal.</p>
-            <button id="btnLogin" class="w-full bg-white text-slate-900 font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-3 hover:bg-slate-200 transition">
+            <button id="btnLogin" class="w-full bg-white text-slate-900 font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-3 hover:bg-slate-200 transition mt-6">
                 <img src="https://fonts.gstatic.com/s/i/productlogos/googleg/v6/24px.svg" width="20">
                 Entrar con Google
             </button>
@@ -44,123 +45,108 @@
         </div>
     </div>
 
-    <div class="max-w-7xl mx-auto w-full flex-grow flex flex-col overflow-hidden">
-        <header class="mb-4 flex flex-col md:flex-row justify-between items-start md:items-end border-b border-slate-700 pb-4 shrink-0 gap-4">
+    <div class="max-w-[1600px] mx-auto w-full flex-grow flex flex-col overflow-hidden">
+        <header class="mb-4 flex flex-col md:flex-row justify-between items-center border-b border-slate-700 pb-4 shrink-0">
             <div>
-                <h1 class="text-3xl font-bold text-sky-400">Task Prioritizer Pro</h1>
-                <p class="text-slate-400 text-sm mt-1">Timeline Dinámico | Tracking de Enlaces | Hub Ciencia</p>
+                <h1 class="text-2xl font-bold text-sky-400">Task Prioritizer Pro</h1>
+                <p class="text-slate-400 text-xs mt-1">Gestión Científica de Proyectos</p>
             </div>
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-4 mt-2 md:mt-0">
                 <div class="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
                     <button onclick="changeView('day')" id="btnViewDay" class="px-3 py-1 rounded-md text-xs transition">Día</button>
                     <button onclick="changeView('week')" id="btnViewWeek" class="px-3 py-1 rounded-md text-xs bg-sky-600 text-white transition">Semana</button>
                     <button onclick="changeView('month')" id="btnViewMonth" class="px-3 py-1 rounded-md text-xs transition">Mes</button>
                 </div>
-                
-                <div id="userProfile" class="hidden md:flex items-center gap-2 text-right">
-                    <div class="text-xs">
-                        <p id="userName" class="font-bold text-slate-200"></p>
-                        <button id="btnLogout" class="text-sky-400 hover:underline">Cerrar Sesión</button>
-                    </div>
-                    <img id="userAvatar" src="" class="w-8 h-8 rounded-full border border-slate-600">
+                <button onclick="toggleModal('completedModal')" class="text-xs bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-lg text-slate-200">Historial</button>
+                <div id="userProfile" class="hidden flex items-center gap-2">
+                    <img id="userAvatar" src="" class="w-7 h-7 rounded-full border border-slate-600">
+                    <button id="btnLogout" class="text-[10px] text-sky-400 hover:underline">Salir</button>
                 </div>
-                <button onclick="toggleModal('completedModal')" class="text-sm bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-lg transition text-slate-200 shadow-md">
-                    Historial
-                </button>
             </div>
         </header>
 
         <div class="flex flex-col lg:flex-row gap-6 flex-grow overflow-hidden">
-            <aside class="w-full lg:w-1/4 bg-slate-800 p-6 rounded-xl shadow-xl overflow-y-auto shrink-0 h-fit border border-slate-700">
-                <h2 class="text-lg font-semibold mb-4 text-white border-l-4 border-sky-500 pl-2">Nueva Tarea</h2>
-                <div id="mainForm" class="space-y-4">
-                    <input type="text" id="taskTitle" placeholder="Título de la tarea..." class="w-full p-3 rounded-lg bg-slate-900 border border-slate-700 focus:border-sky-500 outline-none text-sm text-white">
-                    <textarea id="taskNotes" placeholder="Notas o enlaces..." class="w-full p-3 h-20 rounded-lg bg-slate-900 border border-slate-700 focus:border-sky-500 outline-none text-xs text-slate-300 resize-none"></textarea>
+            <aside class="w-full lg:w-80 bg-slate-800 p-5 rounded-xl shadow-xl overflow-y-auto border border-slate-700 shrink-0">
+                <h2 class="text-md font-semibold mb-4 text-white border-l-4 border-sky-500 pl-2">Nueva Tarea Maestra</h2>
+                <div id="mainForm" class="space-y-3">
+                    <input type="text" id="taskTitle" placeholder="Nombre de la tarea..." class="w-full p-2.5 rounded-lg bg-slate-900 border border-slate-700 text-sm text-white outline-none focus:border-sky-500">
+                    <textarea id="taskNotes" placeholder="Notas o enlaces..." class="w-full p-2.5 h-16 rounded-lg bg-slate-900 border border-slate-700 text-xs text-slate-300 resize-none outline-none focus:border-sky-500"></textarea>
 
-                    <div class="grid grid-cols-3 gap-2 text-xs">
-                        <select id="imp" class="p-2 rounded bg-slate-900 border border-slate-700 text-white"><option value="3">Imp: Alta</option><option value="2">Media</option><option value="1">Baja</option></select>
-                        <select id="urg" class="p-2 rounded bg-slate-900 border border-slate-700 text-white"><option value="3">Urg: Inmediata</option><option value="2">Pronta</option><option value="1">Normal</option></select>
-                        <select id="comp" class="p-2 rounded bg-slate-900 border border-slate-700 text-white"><option value="1">Esf: Bajo</option><option value="2">Medio</option><option value="3">Alto</option></select>
+                    <div class="grid grid-cols-3 gap-1.5 text-[10px]">
+                        <select id="imp" class="p-1.5 rounded bg-slate-900 border border-slate-700 text-white"><option value="3">Alta</option><option value="2">Media</option><option value="1">Baja</option></select>
+                        <select id="urg" class="p-1.5 rounded bg-slate-900 border border-slate-700 text-white"><option value="3">Inmed.</option><option value="2">Pronta</option><option value="1">Normal</option></select>
+                        <select id="comp" class="p-1.5 rounded bg-slate-900 border border-slate-700 text-white"><option value="1">Bajo</option><option value="2">Medio</option><option value="3">Alto</option></select>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-3 p-3 bg-slate-900/50 rounded border border-slate-700/50">
+                    <div class="grid grid-cols-2 gap-2 p-2 bg-slate-900/50 rounded border border-slate-700">
                         <div class="flex flex-col">
-                            <label class="mb-1 text-[10px] text-sky-400 font-bold uppercase">Inicio</label>
-                            <input type="date" id="taskStartDate" class="p-2 rounded bg-slate-900 border border-slate-700 text-white text-xs" style="color-scheme: dark;">
+                            <label class="text-[9px] text-sky-400 font-bold uppercase">Inicio</label>
+                            <input type="date" id="taskStartDate" class="bg-transparent text-white text-[10px] outline-none" style="color-scheme: dark;">
                         </div>
                         <div class="flex flex-col">
-                            <label class="mb-1 text-[10px] text-red-400 font-bold uppercase">Límite</label>
-                            <input type="date" id="taskDueDate" class="p-2 rounded bg-slate-900 border border-slate-700 text-white text-xs" style="color-scheme: dark;">
+                            <label class="text-[9px] text-red-400 font-bold uppercase">Límite</label>
+                            <input type="date" id="taskDueDate" class="bg-transparent text-white text-[10px] outline-none" style="color-scheme: dark;">
                         </div>
                     </div>
 
-                    <div id="daysSelector" class="grid grid-cols-4 gap-2 text-[10px]">
-                        <label class="flex items-center space-x-1"><input type="checkbox" value="Lunes" class="accent-sky-500" checked> <span>Lu</span></label>
-                        <label class="flex items-center space-x-1"><input type="checkbox" value="Martes" class="accent-sky-500"> <span>Ma</span></label>
-                        <label class="flex items-center space-x-1"><input type="checkbox" value="Miércoles" class="accent-sky-500"> <span>Mi</span></label>
-                        <label class="flex items-center space-x-1"><input type="checkbox" value="Jueves" class="accent-sky-500"> <span>Ju</span></label>
-                        <label class="flex items-center space-x-1"><input type="checkbox" value="Viernes" class="accent-sky-500"> <span>Vi</span></label>
-                        <label class="flex items-center space-x-1"><input type="checkbox" value="Sábado" class="accent-sky-500"> <span>Sá</span></label>
-                        <label class="flex items-center space-x-1"><input type="checkbox" value="Domingo" class="accent-sky-500"> <span>Do</span></label>
+                    <div id="daysSelector" class="grid grid-cols-4 gap-1 text-[9px]">
+                        <label class="flex items-center space-x-1"><input type="checkbox" value="Lunes" checked> <span>Lu</span></label>
+                        <label class="flex items-center space-x-1"><input type="checkbox" value="Martes"> <span>Ma</span></label>
+                        <label class="flex items-center space-x-1"><input type="checkbox" value="Miércoles"> <span>Mi</span></label>
+                        <label class="flex items-center space-x-1"><input type="checkbox" value="Jueves"> <span>Ju</span></label>
+                        <label class="flex items-center space-x-1"><input type="checkbox" value="Viernes"> <span>Vi</span></label>
+                        <label class="flex items-center space-x-1"><input type="checkbox" value="Sábado"> <span>Sá</span></label>
+                        <label class="flex items-center space-x-1"><input type="checkbox" value="Domingo"> <span>Do</span></label>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-3">
-                        <input type="time" id="taskTime" class="p-2 rounded bg-slate-900 border border-slate-700 text-white text-xs" style="color-scheme: dark;">
-                        <select id="taskDuration" class="p-2 rounded bg-slate-900 border border-slate-700 text-white text-xs">
-                            <option value="0">Sin tiempo</option>
-                            <option value="30">30 min</option>
-                            <option value="60">1 hora</option>
-                            <option value="120">2 horas</option>
-                        </select>
+                    <div class="flex items-center gap-2">
+                        <input type="time" id="taskTime" class="flex-1 p-1.5 rounded bg-slate-900 border border-slate-700 text-white text-[10px]" style="color-scheme: dark;">
+                        <label class="flex items-center space-x-1 text-[10px] cursor-pointer">
+                            <input type="checkbox" id="isRecurring" class="accent-sky-500">
+                            <span>Recurrente</span>
+                        </label>
                     </div>
-                    
-                    <label class="flex justify-center items-center space-x-2 text-xs bg-slate-900 p-2 rounded border border-slate-700 cursor-pointer">
-                        <input type="checkbox" id="isRecurring" class="accent-sky-500">
-                        <span>Recurrencia Semanal</span>
-                    </label>
 
-                    <button onclick="handleAddTask()" class="w-full bg-sky-600 hover:bg-sky-500 text-white font-bold py-3 rounded-lg transition shadow-lg">
-                        Crear Tarea Principal
-                    </button>
+                    <button onclick="handleAddTask()" class="w-full bg-sky-600 hover:bg-sky-500 text-white font-bold py-2.5 rounded-lg transition text-sm">Crear Tarea</button>
                 </div>
             </aside>
 
-            <div class="w-full lg:w-3/4 flex flex-col h-full overflow-hidden">
-                <div class="flex justify-between items-center mb-4 bg-slate-800 p-3 rounded-xl border border-slate-700 shrink-0">
-                    <button onclick="navigateTime(-1)" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs text-white">← Anterior</button>
-                    <h3 id="weekLabel" class="text-white font-bold text-sm tracking-wide"></h3>
-                    <button onclick="navigateTime(1)" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs text-white">Siguiente →</button>
+            <div class="flex-grow flex flex-col min-w-0">
+                <div class="flex justify-between items-center mb-3 bg-slate-800 p-2 rounded-lg border border-slate-700 shrink-0">
+                    <button onclick="navigateTime(-1)" class="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded text-xs">←</button>
+                    <h3 id="weekLabel" class="text-white font-bold text-xs tracking-wider"></h3>
+                    <button onclick="navigateTime(1)" class="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded text-xs">→</button>
                 </div>
-                <main class="w-full bg-slate-900/30 rounded-xl overflow-x-auto overflow-y-auto p-2 border border-slate-800 flex-grow" id="kanbanBoard"></main>
+                <main class="flex-grow overflow-x-auto overflow-y-auto bg-slate-900/30 rounded-xl border border-slate-800 p-2" id="kanbanBoard"></main>
             </div>
         </div>
     </div>
 
-    <div id="subtaskModal" class="fixed inset-0 bg-black/80 hidden flex justify-center items-center z-[60] p-4 backdrop-blur-sm">
-        <div class="bg-slate-800 p-6 rounded-xl w-full max-w-md border border-sky-500/30 shadow-2xl">
-            <h2 id="subtaskModalTitle" class="text-xl font-bold text-sky-400 mb-4">Agregar Subtarea</h2>
+    <div id="subtaskModal" class="fixed inset-0 bg-black/80 hidden flex justify-center items-center z-[70] p-4 backdrop-blur-sm">
+        <div class="bg-slate-800 p-6 rounded-xl w-full max-w-md border border-sky-500/30">
+            <h2 id="subtaskModalTitle" class="text-lg font-bold text-sky-400 mb-4">Nueva Subtarea</h2>
             <div id="subtaskForm" class="space-y-4">
                 <input type="hidden" id="parentTaskId">
-                <input type="text" id="subTitle" placeholder="Nombre de la subtarea..." class="w-full p-3 rounded-lg bg-slate-900 border border-slate-700 text-white">
-                <textarea id="subNotes" placeholder="Notas adicionales..." class="w-full p-2 h-16 rounded-lg bg-slate-900 border border-slate-700 text-xs text-slate-300 resize-none"></textarea>
+                <input type="text" id="subTitle" placeholder="¿Qué hay que hacer?" class="w-full p-2.5 rounded bg-slate-900 border border-slate-700 text-white text-sm">
+                <textarea id="subNotes" placeholder="Notas adicionales..." class="w-full p-2 h-16 rounded bg-slate-900 border border-slate-700 text-xs text-slate-300 resize-none"></textarea>
                 <div class="grid grid-cols-3 gap-2">
                     <select id="subImp" class="p-2 rounded bg-slate-900 border border-slate-700 text-xs text-white"><option value="3">Alta</option><option value="2">Media</option><option value="1">Baja</option></select>
-                    <select id="subUrg" class="p-2 rounded bg-slate-900 border border-slate-700 text-xs text-white"><option value="3">Inmediata</option><option value="2">Pronta</option><option value="1">Normal</option></select>
+                    <select id="subUrg" class="p-2 rounded bg-slate-900 border border-slate-700 text-xs text-white"><option value="3">Inmed.</option><option value="2">Pronta</option><option value="1">Normal</option></select>
                     <select id="subComp" class="p-2 rounded bg-slate-900 border border-slate-700 text-xs text-white"><option value="1">Bajo</option><option value="2">Medio</option><option value="3">Alto</option></select>
                 </div>
-                <div class="flex gap-2 pt-2">
-                    <button onclick="toggleModal('subtaskModal')" class="flex-1 bg-slate-700 py-2 rounded-lg text-white">Cancelar</button>
-                    <button onclick="handleAddSubtask()" class="flex-1 bg-sky-600 py-2 rounded-lg text-white font-bold">Guardar</button>
+                <div class="flex gap-2">
+                    <button onclick="toggleModal('subtaskModal')" class="flex-1 bg-slate-700 py-2 rounded text-white text-sm">Cancelar</button>
+                    <button onclick="handleAddSubtask()" class="flex-1 bg-sky-600 py-2 rounded text-white font-bold text-sm">Guardar</button>
                 </div>
             </div>
         </div>
     </div>
 
     <div id="completedModal" class="fixed inset-0 bg-black/70 hidden flex justify-center items-center z-50 p-4">
-        <div class="bg-slate-800 p-6 rounded-xl w-full max-w-2xl max-h-[80vh] flex flex-col border border-slate-600">
-            <h2 class="text-xl font-bold text-emerald-400 mb-4 border-b border-slate-700 pb-2">Historial</h2>
+        <div class="bg-slate-800 p-6 rounded-xl w-full max-w-xl max-h-[70vh] flex flex-col">
+            <h2 class="text-lg font-bold text-emerald-400 mb-4 border-b border-slate-700 pb-2">Tareas Completadas</h2>
             <div id="completedList" class="overflow-y-auto space-y-2 flex-grow"></div>
-            <button onclick="toggleModal('completedModal')" class="mt-4 bg-slate-700 p-2 rounded text-white">Cerrar</button>
+            <button onclick="toggleModal('completedModal')" class="mt-4 bg-slate-700 p-2 rounded text-xs">Cerrar</button>
         </div>
     </div>
 
@@ -175,14 +161,14 @@
             return `${date.getFullYear()}-${z(date.getMonth()+1)}-${z(date.getDate())}`;
         };
 
+        const weekDays = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+
         function getMonday(d) {
             d = new Date(d); d.setHours(0,0,0,0);
             let day = d.getDay();
             let diff = d.getDate() - day + (day == 0 ? -6 : 1);
             return new Date(d.setDate(diff));
         }
-
-        const weekDays = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 
         function changeView(view) {
             currentView = view;
@@ -200,12 +186,6 @@
             renderKanban();
         }
 
-        function shareTask(id) {
-            const url = new URL(window.location.href);
-            url.searchParams.set('taskId', id);
-            navigator.clipboard.writeText(url.href).then(() => alert("Enlace copiado."));
-        }
-
         function handleAddTask() {
             const task = gatherFormData('mainForm');
             if (!task) return;
@@ -218,6 +198,7 @@
             const parentId = parseInt(document.getElementById('parentTaskId').value);
             const subtask = gatherFormData('subtaskForm');
             if (!subtask) return;
+
             const addRecursive = (list) => {
                 for (let t of list) {
                     if (t.id === parentId) {
@@ -230,6 +211,7 @@
                 }
                 return false;
             };
+
             addRecursive(window.tasks);
             saveAndRender();
             toggleModal('subtaskModal');
@@ -238,33 +220,107 @@
         function gatherFormData(prefix) {
             const isSub = prefix === 'subtaskForm';
             const title = document.getElementById(isSub ? 'subTitle' : 'taskTitle').value.trim();
-            const notes = document.getElementById(isSub ? 'subNotes' : 'taskNotes').value.trim();
-            if (!title) return null;
+            if (!title) { alert("El título es obligatorio"); return null; }
+            
             const imp = parseInt(document.getElementById(isSub ? 'subImp' : 'imp').value);
             const urg = parseInt(document.getElementById(isSub ? 'subUrg' : 'urg').value);
             const comp = parseInt(document.getElementById(isSub ? 'subComp' : 'comp').value);
+
             return {
-                id: Date.now(), title, notes, i: imp, u: urg, c: comp,
+                id: Date.now(),
+                title: title,
+                notes: document.getElementById(isSub ? 'subNotes' : 'taskNotes').value.trim(),
+                i: imp, u: urg, c: comp,
                 time: isSub ? "" : document.getElementById('taskTime').value,
-                duration: isSub ? 0 : parseInt(document.getElementById('taskDuration').value),
                 startDate: isSub ? toLocalISO(new Date()) : document.getElementById('taskStartDate').value,
-                days: isSub ? ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"] : Array.from(document.querySelectorAll('#daysSelector input:checked')).map(cb => cb.value),
+                days: isSub ? weekDays : Array.from(document.querySelectorAll('#daysSelector input:checked')).map(cb => cb.value),
                 isRecurring: isSub ? false : document.getElementById('isRecurring').checked,
-                completed: false, subtasks: [], score: (imp * 3) + (urg * 2) - comp
+                completed: false,
+                subtasks: [],
+                score: (imp * 3) + (urg * 2) - comp
             };
         }
 
-        function updateNote(id, val) {
-            recursiveAction(window.tasks, id, (list, idx) => { list[idx].notes = val; });
-            localStorage.setItem('priorityTasksPro', JSON.stringify(window.tasks));
-            window.dispatchEvent(new CustomEvent('tasksUpdated', { detail: window.tasks }));
+        function createDeepTaskHTML(t) {
+            const isMonth = currentView === 'month';
+            const hasSubtasks = t.subtasks && t.subtasks.length > 0;
+            const isExpanded = !isMonth && expandedTasks.has(t.id);
+            const colorClass = t.score >= 10 ? 'border-l-red-500' : (t.score >= 7 ? 'border-l-yellow-500' : 'border-l-emerald-500');
+            
+            return `
+                <div id="task-${t.id}" class="task-card bg-slate-900 p-2 rounded border-l-4 ${colorClass} shadow-lg mb-2">
+                    <div class="flex justify-between items-start gap-1">
+                        <div class="cursor-pointer overflow-hidden flex-grow" onclick="toggleTaskExpansion(${t.id})">
+                            <p class="text-[11px] font-bold text-slate-100 truncate">${hasSubtasks && !isMonth ? (isExpanded ? '▼ ' : '▶ ') : ''}${t.title}</p>
+                            ${t.time && !isMonth ? `<span class="text-[9px] text-sky-400">🕒 ${t.time}</span>` : ''}
+                        </div>
+                        <div class="flex gap-1 shrink-0">
+                            <button onclick="shareTask(${t.id})" title="Enlace" class="text-[10px] text-slate-500 hover:text-sky-400">🔗</button>
+                            <button onclick="openSubtaskModal(${t.id}, '${t.title}')" class="text-[10px] text-sky-500 hover:text-sky-300">+</button>
+                            <button onclick="completeTask(${t.id})" class="text-[10px] text-emerald-500 hover:text-emerald-300">✓</button>
+                            <button onclick="deleteTask(${t.id})" class="text-[10px] text-red-500 hover:text-red-300">×</button>
+                        </div>
+                    </div>
+                    ${isExpanded ? `
+                        <textarea oninput="updateNote(${t.id}, this.value)" class="notes-area w-full bg-slate-950/50 p-1.5 mt-2 rounded border border-slate-800 text-slate-400 outline-none h-12 resize-none">${t.notes || ""}</textarea>
+                        ${hasSubtasks ? `
+                            <div class="subtask-container">
+                                ${t.subtasks.filter(s => !s.completed).map(s => createDeepTaskHTML(s)).join('')}
+                            </div>
+                        ` : ''}
+                    ` : ''}
+                </div>`;
         }
 
-        function saveAndRender() {
-            localStorage.setItem('priorityTasksPro', JSON.stringify(window.tasks));
-            renderKanban();
-            renderCompleted();
-            window.dispatchEvent(new CustomEvent('tasksUpdated', { detail: window.tasks }));
+        function renderKanban() {
+            const board = document.getElementById('kanbanBoard');
+            board.innerHTML = '';
+            board.className = (currentView === 'month') ? "calendar-grid" : "flex gap-4 h-full items-start";
+            
+            const todayISO = toLocalISO(new Date());
+            let startDate, iterations;
+
+            if (currentView === 'day') {
+                startDate = new Date(baseDate); iterations = 1;
+            } else if (currentView === 'week') {
+                startDate = getMonday(baseDate); iterations = 7;
+            } else {
+                const year = baseDate.getFullYear();
+                const month = baseDate.getMonth();
+                const firstDay = new Date(year, month, 1);
+                let offset = firstDay.getDay() - 1;
+                if (offset === -1) offset = 6;
+                startDate = new Date(firstDay);
+                startDate.setDate(startDate.getDate() - offset);
+                iterations = 35; 
+            }
+
+            for (let i = 0; i < iterations; i++) {
+                let colDate = new Date(startDate);
+                colDate.setDate(colDate.getDate() + i);
+                let colISO = toLocalISO(colDate);
+                let dayName = weekDays[colDate.getDay() === 0 ? 6 : colDate.getDay() - 1];
+                let isCurrentMonth = colDate.getMonth() === baseDate.getMonth();
+
+                const dayTasks = window.tasks.filter(t => {
+                    if (t.completed) return false;
+                    return t.isRecurring ? (t.days.includes(dayName) && colISO >= t.startDate) : (t.startDate === colISO);
+                }).sort((a,b) => b.score - a.score);
+
+                let colHtml = `
+                    <div class="${currentView === 'month' ? 'min-h-[140px]' : 'min-w-[280px] w-[280px] h-full'} bg-slate-800/60 rounded-xl border ${colISO === todayISO ? 'border-sky-500 bg-slate-800' : 'border-slate-700'} flex flex-col ${!isCurrentMonth && currentView === 'month' ? 'opacity-20' : ''}">
+                        <div class="p-2 border-b border-slate-700 flex justify-between items-center shrink-0">
+                            <span class="text-[10px] font-bold ${colISO === todayISO ? 'text-sky-400' : 'text-slate-400'}">${dayName.substring(0,2)} ${colDate.getDate()}</span>
+                            ${dayTasks.length > 0 ? `<span class="bg-slate-900 text-[9px] px-1.5 rounded-full text-slate-500">${dayTasks.length}</span>` : ''}
+                        </div>
+                        <div class="p-2 overflow-y-auto flex-grow scroll-container">
+                            ${dayTasks.map(t => createDeepTaskHTML(t)).join('')}
+                        </div>
+                    </div>`;
+                board.innerHTML += colHtml;
+            }
+            const label = currentView === 'month' ? baseDate.toLocaleDateString('es-ES', {month:'long', year:'numeric'}) : "PRIORITY BOARD";
+            document.getElementById('weekLabel').innerText = label.toUpperCase();
         }
 
         function toggleTaskExpansion(id) {
@@ -277,10 +333,18 @@
         function openSubtaskModal(parentId, parentTitle) {
             document.getElementById('parentTaskId').value = parentId;
             document.getElementById('subtaskModalTitle').innerText = `Subtarea para: ${parentTitle}`;
+            document.getElementById('subTitle').value = "";
+            document.getElementById('subNotes').value = "";
             toggleModal('subtaskModal');
         }
 
         function toggleModal(id) { document.getElementById(id).classList.toggle('hidden'); }
+        function saveAndRender() {
+            localStorage.setItem('priorityTasksPro', JSON.stringify(window.tasks));
+            renderKanban();
+            renderCompleted();
+            window.dispatchEvent(new CustomEvent('tasksUpdated', { detail: window.tasks }));
+        }
 
         function recursiveAction(list, id, action) {
             for (let i = 0; i < list.length; i++) {
@@ -303,82 +367,16 @@
             saveAndRender();
         }
 
-        function createDeepTaskHTML(t) {
-            const isMonth = currentView === 'month';
-            const colorClass = t.score >= 10 ? 'border-l-red-500' : (t.score >= 7 ? 'border-l-yellow-500' : 'border-l-emerald-500');
-            const isExpanded = !isMonth && expandedTasks.has(t.id);
-            
-            return `
-                <div id="task-${t.id}" class="task-card bg-slate-900 p-1.5 rounded border-l-2 ${colorClass} shadow mb-1">
-                    <div class="flex justify-between items-start gap-1">
-                        <div class="cursor-pointer overflow-hidden" onclick="toggleTaskExpansion(${t.id})">
-                            <p class="text-[10px] font-bold text-slate-100 truncate">${t.title}</p>
-                            ${t.time && !isMonth ? `<span class="text-[8px] text-sky-400">🕒 ${t.time}</span>` : ''}
-                        </div>
-                        <div class="flex gap-0.5 shrink-0">
-                            <button onclick="completeTask(${t.id})" class="text-[9px] text-emerald-500">✓</button>
-                            <button onclick="deleteTask(${t.id})" class="text-[9px] text-red-500">×</button>
-                        </div>
-                    </div>
-                    ${isExpanded ? `
-                        <textarea oninput="updateNote(${t.id}, this.value)" class="notes-area w-full bg-slate-950 p-1 mt-1 rounded text-slate-400 outline-none h-10 resize-none">${t.notes || ""}</textarea>
-                        <div class="subtask-container mt-1">
-                            ${t.subtasks.filter(s => !s.completed).map(s => createDeepTaskHTML(s)).join('')}
-                        </div>
-                    ` : ''}
-                </div>`;
+        function updateNote(id, val) {
+            recursiveAction(window.tasks, id, (list, idx) => { list[idx].notes = val; });
+            localStorage.setItem('priorityTasksPro', JSON.stringify(window.tasks));
+            window.dispatchEvent(new CustomEvent('tasksUpdated', { detail: window.tasks }));
         }
 
-        function renderKanban() {
-            const board = document.getElementById('kanbanBoard');
-            board.innerHTML = '';
-            board.className = (currentView === 'month') ? "calendar-grid" : "flex gap-4 h-full items-start";
-            
-            const todayISO = toLocalISO(new Date());
-            let startDate, iterations;
-
-            if (currentView === 'day') {
-                startDate = new Date(baseDate); iterations = 1;
-            } else if (currentView === 'week') {
-                startDate = getMonday(baseDate); iterations = 7;
-            } else {
-                // Lógica de Calendario
-                const year = baseDate.getFullYear();
-                const month = baseDate.getMonth();
-                const firstDayOfMonth = new Date(year, month, 1);
-                // Ajuste para que empiece en Lunes (0: Dom, 1: Lun...)
-                let startOffset = firstDayOfMonth.getDay() - 1;
-                if (startOffset === -1) startOffset = 6; 
-                
-                startDate = new Date(firstDayOfMonth);
-                startDate.setDate(startDate.getDate() - startOffset);
-                iterations = 35; // 5 semanas fijas para el calendario
-            }
-
-            for (let i = 0; i < iterations; i++) {
-                let colDate = new Date(startDate);
-                colDate.setDate(colDate.getDate() + i);
-                let colISO = toLocalISO(colDate);
-                let dayName = weekDays[colDate.getDay() === 0 ? 6 : colDate.getDay() - 1];
-                let isCurrentMonth = colDate.getMonth() === baseDate.getMonth();
-
-                const dayTasks = window.tasks.filter(t => {
-                    if (t.completed) return false;
-                    return t.isRecurring ? (t.days.includes(dayName) && colISO >= t.startDate) : (t.startDate === colISO);
-                }).sort((a,b) => b.score - a.score);
-
-                let colHtml = `
-                    <div class="${currentView === 'month' ? 'min-h-[120px]' : 'min-w-[260px] w-[260px] h-full'} bg-slate-800/80 rounded border ${colISO === todayISO ? 'border-sky-500' : 'border-slate-700'} flex flex-col ${!isCurrentMonth && currentView === 'month' ? 'opacity-30' : ''}">
-                        <div class="p-1 border-b border-slate-700 flex justify-between items-center">
-                            <span class="text-[9px] font-bold ${colISO === todayISO ? 'text-sky-400' : 'text-slate-400'}">${dayName.substring(0,2)} ${colDate.getDate()}</span>
-                        </div>
-                        <div class="p-1 overflow-y-auto flex-grow">
-                            ${dayTasks.map(t => createDeepTaskHTML(t)).join('')}
-                        </div>
-                    </div>`;
-                board.innerHTML += colHtml;
-            }
-            document.getElementById('weekLabel').innerText = (currentView === 'month' ? baseDate.toLocaleDateString('es-ES', {month:'long', year:'numeric'}) : "PLANIFICADOR").toUpperCase();
+        function shareTask(id) {
+            const url = new URL(window.location.href);
+            url.searchParams.set('taskId', id);
+            navigator.clipboard.writeText(url.href).then(() => alert("Enlace copiado al portapapeles."));
         }
 
         function renderCompleted() {
@@ -428,7 +426,6 @@
                 sessionUserId = user.uid;
                 document.getElementById('authOverlay').classList.add('hidden');
                 document.getElementById('userProfile').classList.remove('hidden');
-                document.getElementById('userName').innerText = user.displayName;
                 document.getElementById('userAvatar').src = user.photoURL;
                 const docSnap = await getDoc(doc(db, "users", user.uid));
                 if (docSnap.exists() && docSnap.data().tasks) {
