@@ -202,7 +202,6 @@
             renderKanban();
         }
 
-        // --- FUNCIONALIDAD DE EDICIÓN ---
         function openEditTask(id) {
             recursiveAction(window.tasks, id, (list, idx) => {
                 const t = list[idx];
@@ -217,7 +216,6 @@
                 document.getElementById('taskDuration').value = t.duration || "";
                 document.getElementById('isRecurring').checked = t.isRecurring;
                 
-                // Checkboxes de días
                 document.querySelectorAll('#daysSelector input').forEach(cb => {
                     cb.checked = t.days.includes(cb.value);
                 });
@@ -390,7 +388,24 @@
                     </div>`;
                 board.innerHTML += colHtml;
             }
-            const label = currentView === 'month' ? baseDate.toLocaleDateString('es-ES', {month:'long', year:'numeric'}) : "PRIORITY BOARD";
+
+            // --- CORRECCIÓN DE ETIQUETAS DINÁMICAS ---
+            let label = "";
+            if (currentView === 'day') {
+                label = baseDate.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+            } else if (currentView === 'week') {
+                const monday = getMonday(baseDate);
+                const sunday = new Date(monday);
+                sunday.setDate(monday.getDate() + 6);
+                const monthOpt = { month: 'long' };
+                if (monday.getMonth() === sunday.getMonth()) {
+                    label = `Semana del ${monday.getDate()} al ${sunday.getDate()} de ${sunday.toLocaleDateString('es-ES', monthOpt)}`;
+                } else {
+                    label = `Del ${monday.getDate()} de ${monday.toLocaleDateString('es-ES', monthOpt)} al ${sunday.getDate()} de ${sunday.toLocaleDateString('es-ES', monthOpt)}`;
+                }
+            } else {
+                label = baseDate.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+            }
             document.getElementById('weekLabel').innerText = label.toUpperCase();
         }
 
