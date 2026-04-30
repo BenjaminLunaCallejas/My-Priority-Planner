@@ -62,6 +62,7 @@
                     <button onclick="changeView('week')" id="btnViewWeek" class="px-3 py-1 rounded-md text-xs bg-sky-600 text-white transition">Semana</button>
                     <button onclick="changeView('month')" id="btnViewMonth" class="px-3 py-1 rounded-md text-xs transition">Mes</button>
                 </div>
+                <button onclick="openListView()" class="text-xs bg-sky-600 hover:bg-sky-500 px-4 py-2 rounded-lg text-white font-bold transition flex items-center gap-1 shadow-lg">🔍 Buscar / Lista</button>
                 <button onclick="toggleModal('completedModal')" class="text-xs bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-lg text-slate-200">Historial</button>
                 <div id="userProfile" class="hidden flex items-center gap-2">
                     <img id="userAvatar" src="" class="w-7 h-7 rounded-full border border-slate-600">
@@ -167,6 +168,21 @@
                     <button id="btnSaveSubtask" onclick="handleAddSubtask()" class="flex-1 bg-sky-600 py-2 rounded text-white font-bold text-sm">Guardar</button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <div id="listModal" class="fixed inset-0 bg-black/80 hidden flex justify-center items-start z-[60] p-4 pt-10 backdrop-blur-sm">
+        <div class="bg-slate-800 p-6 rounded-xl w-full max-w-4xl h-[85vh] flex flex-col border border-sky-500/30 shadow-2xl">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-3 shrink-0">
+                <h2 class="text-xl font-bold text-sky-400">Directorio General de Tareas</h2>
+                <button onclick="toggleModal('listModal')" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
+            </div>
+            
+            <input type="text" id="searchInput" oninput="renderListView()" placeholder="Escriba palabras clave para filtrar por título o notas..." class="w-full p-3 rounded-lg bg-slate-900 border border-slate-600 text-white text-sm mb-4 outline-none focus:border-sky-500 shrink-0">
+            
+            <div id="listViewContainer" class="overflow-y-auto space-y-2 flex-grow pr-2 scrollbar-thin"></div>
+            
+            <div class="mt-4 pt-3 border-t border-slate-700 text-right text-xs text-slate-500 shrink-0" id="listStats"></div>
         </div>
     </div>
 
@@ -424,6 +440,83 @@
             document.getElementById('weekLabel').innerText = label.toUpperCase();
         }
 
+        // --- Nuevas Funciones para el Buscador y Visor de Lista ---
+        function openListView() {
+            document.getElementById('searchInput').value = '';
+            renderListView();
+            toggleModal('listModal');
+            // Enfocar automáticamente el input de búsqueda después de la transición
+            setTimeout(() => document.getElementById('searchInput').focus(), 100);
+        }
+
+        function renderListView() {
+            const container = document.getElementById('listViewContainer');
+            const stats = document.getElementById('listStats');
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            container.innerHTML = '';
+
+            // Aplanar la jerarquía de tareas para búsquedas
+            const flatTasks = [];
+            const getFlatActive = (taskList, parentId = null, parentTitle = null) => {
+                taskList.forEach(t => {
+                    if (!t.completed) {
+                        flatTasks.push({ ...t, parentId, parentTitle });
+                        if (t.subtasks && t.subtasks.length > 0) {
+                            getFlatActive(t.subtasks, t.id, t.title);
+                        }
+                    }
+                });
+            };
+            getFlatActive(window.tasks);
+
+            // Filtrar por consulta
+            const filtered = flatTasks.filter(t => 
+                t.title.toLowerCase().includes(query) || 
+                (t.notes && t.notes.toLowerCase().includes(query))
+            );
+
+            // Ordenar por Fecha y luego por Prioridad (Score)
+            filtered.sort((a, b) => {
+                if (a.startDate !== b.startDate) return a.startDate.localeCompare(b.startDate);
+                return b.score - a.score;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = '<p class="text-slate-500 text-center py-10 text-sm">No se encontraron tareas pendientes con esa búsqueda.</p>';
+                stats.innerText = '0 tareas coincidentes';
+                return;
+            }
+
+            filtered.forEach(t => {
+                const isSub = !!t.parentTitle;
+                const colorClass = t.score >= 10 ? 'border-l-red-500 text-red-400' : (t.score >= 7 ? 'border-l-yellow-500 text-yellow-400' : 'border-l-emerald-500 text-emerald-400');
+                
+                container.innerHTML += `
+                <div class="bg-slate-900/80 p-4 rounded-lg border border-slate-700 border-l-4 ${colorClass} flex flex-col md:flex-row justify-between items-start md:items-center gap-3 hover:border-sky-500 transition-colors">
+                    <div class="flex-grow">
+                        <div class="flex items-center gap-2 mb-1">
+                            ${isSub ? `<span class="bg-slate-700 text-[10px] px-2 py-0.5 rounded text-slate-300 font-medium tracking-wide">Subtarea de: ${t.parentTitle}</span>` : ''}
+                            ${t.isRecurring ? `<span class="bg-indigo-900 text-[10px] px-2 py-0.5 rounded text-indigo-300 font-medium tracking-wide">Recurrente</span>` : ''}
+                        </div>
+                        <h4 class="font-bold text-slate-100 text-sm">${t.title}</h4>
+                        ${t.notes ? `<p class="text-slate-400 text-xs mt-1 line-clamp-2">${t.notes}</p>` : ''}
+                        <div class="text-[11px] text-slate-500 mt-2 flex flex-wrap gap-4 font-medium">
+                            <span class="flex items-center gap-1">📅 ${t.startDate}</span>
+                            ${t.time ? `<span class="flex items-center gap-1">🕒 ${t.time}</span>` : ''}
+                            ${t.duration ? `<span class="flex items-center gap-1">⏳ ${t.duration}${t.durationUnit}</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="flex gap-2 shrink-0 mt-3 md:mt-0">
+                        <button onclick="toggleModal('listModal'); ${isSub ? `openEditSubtask(${t.id}, ${t.parentId})` : `openEditTask(${t.id})`}" class="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-md text-xs text-white transition shadow-sm">✎ Editar</button>
+                        <button onclick="completeTask(${t.id}); renderListView();" class="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-md text-xs text-white transition shadow-sm">✓ Completar</button>
+                    </div>
+                </div>`;
+            });
+
+            stats.innerText = `Mostrando ${filtered.length} tarea(s) en total`;
+        }
+        // -----------------------------------------------------------
+
         function toggleTaskExpansion(id) {
             if (currentView === 'month') return;
             if (expandedTasks.has(id)) expandedTasks.delete(id);
@@ -446,6 +539,9 @@
             localStorage.setItem('priorityTasksPro', JSON.stringify(window.tasks));
             renderKanban();
             renderCompleted();
+            if(!document.getElementById('listModal').classList.contains('hidden')) {
+                renderListView();
+            }
             window.dispatchEvent(new CustomEvent('tasksUpdated', { detail: window.tasks }));
         }
 
@@ -553,8 +649,7 @@
                 const docSnap = await getDoc(doc(db, "users", user.uid));
                 if (docSnap.exists() && docSnap.data().tasks) {
                     window.tasks = docSnap.data().tasks;
-                    renderKanban();
-                    renderCompleted();
+                    saveAndRender();
                 }
             }
         });
