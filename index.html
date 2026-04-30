@@ -197,6 +197,7 @@
     <script>
         window.tasks = JSON.parse(localStorage.getItem('priorityTasksPro')) || [];
         let expandedTasks = new Set();
+        let listExpandedTasks = new Set(); // Nuevo estado para el modal de lista
         let currentView = 'week'; 
         let baseDate = new Date(); 
 
@@ -445,8 +446,13 @@
             document.getElementById('searchInput').value = '';
             renderListView();
             toggleModal('listModal');
-            // Enfocar automáticamente el input de búsqueda después de la transición
             setTimeout(() => document.getElementById('searchInput').focus(), 100);
+        }
+
+        function toggleListTaskExpansion(id) {
+            if (listExpandedTasks.has(id)) listExpandedTasks.delete(id);
+            else listExpandedTasks.add(id);
+            renderListView();
         }
 
         function renderListView() {
@@ -455,7 +461,6 @@
             const query = document.getElementById('searchInput').value.toLowerCase();
             container.innerHTML = '';
 
-            // Aplanar la jerarquía de tareas para búsquedas
             const flatTasks = [];
             const getFlatActive = (taskList, parentId = null, parentTitle = null) => {
                 taskList.forEach(t => {
@@ -469,13 +474,11 @@
             };
             getFlatActive(window.tasks);
 
-            // Filtrar por consulta
             const filtered = flatTasks.filter(t => 
                 t.title.toLowerCase().includes(query) || 
                 (t.notes && t.notes.toLowerCase().includes(query))
             );
 
-            // Ordenar por Fecha y luego por Prioridad (Score)
             filtered.sort((a, b) => {
                 if (a.startDate !== b.startDate) return a.startDate.localeCompare(b.startDate);
                 return b.score - a.score;
@@ -491,25 +494,53 @@
                 const isSub = !!t.parentTitle;
                 const colorClass = t.score >= 10 ? 'border-l-red-500 text-red-400' : (t.score >= 7 ? 'border-l-yellow-500 text-yellow-400' : 'border-l-emerald-500 text-emerald-400');
                 
+                const hasActiveSubtasks = !isSub && t.subtasks && t.subtasks.filter(st => !st.completed).length > 0;
+                const isExpanded = listExpandedTasks.has(t.id);
+                
+                let subtasksHtml = '';
+                if (hasActiveSubtasks && isExpanded) {
+                    subtasksHtml = `<div class="mt-2 pl-4 border-l-2 border-slate-600 space-y-2 w-full">`;
+                    t.subtasks.filter(s => !s.completed).forEach(s => {
+                        subtasksHtml += `
+                        <div class="bg-slate-800 p-3 rounded-lg border border-slate-700 flex justify-between items-center gap-2">
+                            <div>
+                                <h5 class="font-bold text-slate-200 text-xs">${s.title}</h5>
+                                ${s.duration ? `<span class="text-[10px] text-slate-500">⏳ ${s.duration}${s.durationUnit}</span>` : ''}
+                            </div>
+                            <div class="flex gap-2 shrink-0">
+                                <button onclick="toggleModal('listModal'); openEditSubtask(${s.id}, ${t.id})" class="bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-md text-[10px] text-white transition shadow-sm">✎ Editar</button>
+                                <button onclick="completeTask(${s.id}); renderListView();" class="bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 rounded-md text-[10px] text-white transition shadow-sm">✓ Completar</button>
+                            </div>
+                        </div>`;
+                    });
+                    subtasksHtml += `</div>`;
+                }
+
                 container.innerHTML += `
-                <div class="bg-slate-900/80 p-4 rounded-lg border border-slate-700 border-l-4 ${colorClass} flex flex-col md:flex-row justify-between items-start md:items-center gap-3 hover:border-sky-500 transition-colors">
-                    <div class="flex-grow">
-                        <div class="flex items-center gap-2 mb-1">
-                            ${isSub ? `<span class="bg-slate-700 text-[10px] px-2 py-0.5 rounded text-slate-300 font-medium tracking-wide">Subtarea de: ${t.parentTitle}</span>` : ''}
-                            ${t.isRecurring ? `<span class="bg-indigo-900 text-[10px] px-2 py-0.5 rounded text-indigo-300 font-medium tracking-wide">Recurrente</span>` : ''}
+                <div class="bg-slate-900/80 p-4 rounded-lg border border-slate-700 border-l-4 ${colorClass} flex flex-col gap-3 hover:border-sky-500 transition-colors">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 w-full">
+                        <div class="flex-grow w-full">
+                            <div class="flex items-center gap-2 mb-1">
+                                ${isSub ? `<span class="bg-slate-700 text-[10px] px-2 py-0.5 rounded text-slate-300 font-medium tracking-wide">Subtarea de: ${t.parentTitle}</span>` : ''}
+                                ${t.isRecurring ? `<span class="bg-indigo-900 text-[10px] px-2 py-0.5 rounded text-indigo-300 font-medium tracking-wide">Recurrente</span>` : ''}
+                            </div>
+                            <h4 class="font-bold text-slate-100 text-sm ${hasActiveSubtasks ? 'cursor-pointer hover:text-sky-400 select-none' : ''}" 
+                                ${hasActiveSubtasks ? `onclick="toggleListTaskExpansion(${t.id})"` : ''}>
+                                ${hasActiveSubtasks ? (isExpanded ? '▼ ' : '▶ ') : ''}${t.title}
+                            </h4>
+                            ${t.notes ? `<p class="text-slate-400 text-xs mt-1 line-clamp-2">${t.notes}</p>` : ''}
+                            <div class="text-[11px] text-slate-500 mt-2 flex flex-wrap gap-4 font-medium">
+                                <span class="flex items-center gap-1">📅 ${t.startDate}</span>
+                                ${t.time ? `<span class="flex items-center gap-1">🕒 ${t.time}</span>` : ''}
+                                ${t.duration ? `<span class="flex items-center gap-1">⏳ ${t.duration}${t.durationUnit}</span>` : ''}
+                            </div>
                         </div>
-                        <h4 class="font-bold text-slate-100 text-sm">${t.title}</h4>
-                        ${t.notes ? `<p class="text-slate-400 text-xs mt-1 line-clamp-2">${t.notes}</p>` : ''}
-                        <div class="text-[11px] text-slate-500 mt-2 flex flex-wrap gap-4 font-medium">
-                            <span class="flex items-center gap-1">📅 ${t.startDate}</span>
-                            ${t.time ? `<span class="flex items-center gap-1">🕒 ${t.time}</span>` : ''}
-                            ${t.duration ? `<span class="flex items-center gap-1">⏳ ${t.duration}${t.durationUnit}</span>` : ''}
+                        <div class="flex gap-2 shrink-0 mt-3 md:mt-0">
+                            <button onclick="toggleModal('listModal'); ${isSub ? `openEditSubtask(${t.id}, ${t.parentId})` : `openEditTask(${t.id})`}" class="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-md text-xs text-white transition shadow-sm">✎ Editar</button>
+                            <button onclick="completeTask(${t.id}); renderListView();" class="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-md text-xs text-white transition shadow-sm">✓ Completar</button>
                         </div>
                     </div>
-                    <div class="flex gap-2 shrink-0 mt-3 md:mt-0">
-                        <button onclick="toggleModal('listModal'); ${isSub ? `openEditSubtask(${t.id}, ${t.parentId})` : `openEditTask(${t.id})`}" class="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-md text-xs text-white transition shadow-sm">✎ Editar</button>
-                        <button onclick="completeTask(${t.id}); renderListView();" class="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-md text-xs text-white transition shadow-sm">✓ Completar</button>
-                    </div>
+                    ${subtasksHtml}
                 </div>`;
             });
 
