@@ -175,7 +175,25 @@
                     </select>
                 </div>
 
-                <div class="flex gap-2">
+                <!-- ADICIÓN: Selector de Días y Recurrencia para Subtareas -->
+                <div id="subDaysSelector" class="grid grid-cols-4 gap-1 text-[9px] mt-2">
+                    <label class="flex items-center space-x-1"><input type="checkbox" value="Lunes" checked> <span>Lu</span></label>
+                    <label class="flex items-center space-x-1"><input type="checkbox" value="Martes"> <span>Ma</span></label>
+                    <label class="flex items-center space-x-1"><input type="checkbox" value="Miércoles"> <span>Mi</span></label>
+                    <label class="flex items-center space-x-1"><input type="checkbox" value="Jueves"> <span>Ju</span></label>
+                    <label class="flex items-center space-x-1"><input type="checkbox" value="Viernes"> <span>Vi</span></label>
+                    <label class="flex items-center space-x-1"><input type="checkbox" value="Sábado"> <span>Sá</span></label>
+                    <label class="flex items-center space-x-1"><input type="checkbox" value="Domingo"> <span>Do</span></label>
+                </div>
+
+                <div class="flex items-center gap-2 mt-2 mb-2">
+                    <label class="flex items-center space-x-1 text-[10px] cursor-pointer">
+                        <input type="checkbox" id="subIsRecurring" class="accent-sky-500">
+                        <span>Recurrente</span>
+                    </label>
+                </div>
+
+                <div class="flex gap-2 mt-2">
                     <button onclick="toggleModal('subtaskModal')" class="flex-1 bg-slate-700 py-2 rounded text-white text-sm">Cancelar</button>
                     <button id="btnSaveSubtask" onclick="handleAddSubtask()" class="flex-1 bg-sky-600 py-2 rounded text-white font-bold text-sm">Guardar</button>
                 </div>
@@ -325,6 +343,12 @@
                 document.getElementById('subDuration').value = s.duration || "";
                 document.getElementById('subDurationUnit').value = s.durationUnit || "min";
                 
+                // ADICIÓN: Extracción de recurrencia en edición de subtareas
+                document.getElementById('subIsRecurring').checked = s.isRecurring || false;
+                document.querySelectorAll('#subDaysSelector input').forEach(cb => {
+                    cb.checked = s.days ? s.days.includes(cb.value) : false;
+                });
+                
                 document.getElementById('subtaskModalTitle').innerText = "Editando Subtarea";
                 document.getElementById('btnSaveSubtask').innerText = "Actualizar";
                 toggleModal('subtaskModal');
@@ -348,8 +372,9 @@
                 durationUnit: document.getElementById(isSub ? 'subDurationUnit' : 'taskDurationUnit').value,
                 startDate: document.getElementById(isSub ? 'subStartDate' : 'taskStartDate').value,
                 dueDate: document.getElementById(isSub ? 'subDueDate' : 'taskDueDate').value,
-                days: isSub ? weekDays : Array.from(document.querySelectorAll('#daysSelector input:checked')).map(cb => cb.value),
-                isRecurring: isSub ? false : document.getElementById('isRecurring').checked,
+                // ADICIÓN: Captura selectiva de parámetros de repetición basados en el contexto (Tarea vs Subtarea)
+                days: isSub ? Array.from(document.querySelectorAll('#subDaysSelector input:checked')).map(cb => cb.value) : Array.from(document.querySelectorAll('#daysSelector input:checked')).map(cb => cb.value),
+                isRecurring: isSub ? document.getElementById('subIsRecurring').checked : document.getElementById('isRecurring').checked,
                 completed: false,
                 completedDates: [], 
                 subtasks: [],
@@ -386,7 +411,24 @@
                         <textarea oninput="updateNote(${t.id}, this.value)" class="notes-area w-full bg-slate-950/50 p-1.5 mt-2 rounded border border-slate-800 text-slate-400 outline-none h-12 resize-none">${t.notes || ""}</textarea>
                         ${hasSubtasks ? `
                             <div class="subtask-container">
-                                ${t.subtasks.filter(s => !s.completed).sort((a, b) => {
+                                ${t.subtasks.filter(s => {
+                                    if (s.completed) return false;
+                                    if (currentDate) {
+                                        // ADICIÓN: Bloqueo cronológico estricto para subtareas en el Kanban
+                                        if (currentDate < s.startDate) return false;
+                                        
+                                        if (s.isRecurring) {
+                                            const [year, month, day] = currentDate.split('-');
+                                            const localDate = new Date(year, month - 1, day);
+                                            const dayName = weekDays[localDate.getDay() === 0 ? 6 : localDate.getDay() - 1];
+                                            
+                                            if (s.completedDates && s.completedDates.includes(currentDate)) return false;
+                                            return s.days ? s.days.includes(dayName) : false;
+                                        }
+                                        return true; // Subtarea única, se transfiere a fechas posteriores si no se completa
+                                    }
+                                    return true;
+                                }).sort((a, b) => {
                                     if (a.time && b.time) {
                                         const timeCompare = a.time.localeCompare(b.time);
                                         return timeCompare !== 0 ? timeCompare : b.score - a.score;
@@ -433,9 +475,14 @@
 
                 const dayTasks = window.tasks.filter(t => {
                     if (t.completed) return false;
-                    if (t.isRecurring && t.completedDates && t.completedDates.includes(colISO)) return false;
+                    // ADICIÓN: Bloqueo cronológico estricto para tareas maestras en el Kanban
+                    if (colISO < t.startDate) return false;
                     
-                    return t.isRecurring ? (t.days.includes(dayName) && colISO >= t.startDate) : (t.startDate === colISO);
+                    if (t.isRecurring) {
+                        if (t.completedDates && t.completedDates.includes(colISO)) return false;
+                        return t.days.includes(dayName);
+                    }
+                    return true; // Tarea única, se transfiere a fechas posteriores si no se completa
                 }).sort((a, b) => {
                     if (a.time && b.time) {
                         const timeCompare = a.time.localeCompare(b.time);
@@ -722,7 +769,12 @@
                 document.getElementById('btnCancelEdit').classList.add('hidden');
                 document.getElementById('taskStartDate').value = toLocalISO(new Date());
             } else if (id === 'subtaskForm') {
+                // ADICIÓN: Reinicio limpio de campos de recurrencia en el modal de subtareas
                 document.getElementById('subStartDate').value = toLocalISO(new Date());
+                document.getElementById('subIsRecurring').checked = false;
+                document.querySelectorAll('#subDaysSelector input').forEach(cb => {
+                    cb.checked = (cb.value === "Lunes");
+                });
             }
         }
 
