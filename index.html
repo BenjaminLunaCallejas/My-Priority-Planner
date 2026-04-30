@@ -417,11 +417,11 @@
         }
 
         function openSubtaskModal(parentId, parentTitle) {
+            clearForm('subtaskForm');
             document.getElementById('parentTaskId').value = parentId;
             document.getElementById('editSubId').value = "";
             document.getElementById('subtaskModalTitle').innerText = `Subtarea para: ${parentTitle}`;
             document.getElementById('btnSaveSubtask').innerText = "Guardar";
-            clearForm('subtaskForm');
             toggleModal('subtaskModal');
         }
 
