@@ -334,7 +334,7 @@
                 days: isSub ? weekDays : Array.from(document.querySelectorAll('#daysSelector input:checked')).map(cb => cb.value),
                 isRecurring: isSub ? false : document.getElementById('isRecurring').checked,
                 completed: false,
-                completedDates: [], // ADICIÓN: Matriz para registrar el historial de recurrencias
+                completedDates: [], 
                 subtasks: [],
                 score: (parseInt(document.getElementById(isSub ? 'subImp' : 'imp').value) * 3) + 
                        (parseInt(document.getElementById(isSub ? 'subUrg' : 'urg').value) * 2) - 
@@ -342,7 +342,6 @@
             };
         }
 
-        // ADICIÓN: Pase de fecha actual en la generación del HTML
         function createDeepTaskHTML(t, parentId = null, currentDate = null) {
             const isMonth = currentView === 'month';
             const hasSubtasks = t.subtasks && t.subtasks.length > 0;
@@ -409,12 +408,14 @@
 
                 const dayTasks = window.tasks.filter(t => {
                     if (t.completed) return false;
-                    // ADICIÓN: Filtro para excluir la instancia si la fecha exacta ya fue completada
                     if (t.isRecurring && t.completedDates && t.completedDates.includes(colISO)) return false;
                     
                     return t.isRecurring ? (t.days.includes(dayName) && colISO >= t.startDate) : (t.startDate === colISO);
                 }).sort((a, b) => {
-                    if (a.time && b.time) return a.time.localeCompare(b.time);
+                    if (a.time && b.time) {
+                        const timeCompare = a.time.localeCompare(b.time);
+                        return timeCompare !== 0 ? timeCompare : b.score - a.score;
+                    }
                     if (a.time && !b.time) return -1;
                     if (!a.time && b.time) return 1;
                     return b.score - a.score;
@@ -469,7 +470,7 @@
             const container = document.getElementById('listViewContainer');
             const stats = document.getElementById('listStats');
             const query = document.getElementById('searchInput').value.toLowerCase();
-            const todayISO = toLocalISO(new Date()); // Se establece la fecha de hoy como fallback
+            const todayISO = toLocalISO(new Date()); 
             
             container.innerHTML = '';
 
@@ -493,7 +494,10 @@
 
             filtered.sort((a, b) => {
                 if (a.startDate !== b.startDate) return a.startDate.localeCompare(b.startDate);
-                if (a.time && b.time) return a.time.localeCompare(b.time);
+                if (a.time && b.time) {
+                    const timeCompare = a.time.localeCompare(b.time);
+                    return timeCompare !== 0 ? timeCompare : b.score - a.score;
+                }
                 if (a.time && !b.time) return -1;
                 if (!a.time && b.time) return 1;
                 return b.score - a.score;
@@ -598,7 +602,6 @@
             return false;
         }
 
-        // ADICIÓN: Evaluación condicional de finalización (Instancia vs Global)
         function completeTask(id, targetDate = null) {
             recursiveAction(window.tasks, id, (list, idx) => {
                 if (list[idx].isRecurring && targetDate) {
@@ -621,7 +624,6 @@
             saveAndRender();
         }
 
-        // ADICIÓN: Función para revertir la finalización cronológica de una recurrencia
         function undoRecurringTask(id, date) {
             recursiveAction(window.tasks, id, (list, idx) => {
                 if (list[idx].completedDates) {
@@ -642,7 +644,6 @@
             window.dispatchEvent(new CustomEvent('tasksUpdated', { detail: window.tasks }));
         }
 
-        // ADICIÓN: Desglose de instancias recurrentes completadas en el historial
         function renderCompleted() {
             const list = document.getElementById('completedList');
             list.innerHTML = '';
