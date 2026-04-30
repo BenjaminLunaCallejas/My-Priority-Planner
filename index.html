@@ -107,7 +107,13 @@
 
                     <div class="grid grid-cols-2 gap-2">
                         <input type="time" id="taskTime" class="p-1.5 rounded bg-slate-900 border border-slate-700 text-white text-[10px]" style="color-scheme: dark;">
-                        <input type="number" id="taskDuration" placeholder="Duración (min)" class="p-1.5 rounded bg-slate-900 border border-slate-700 text-white text-[10px] outline-none">
+                        <div class="flex gap-1">
+                            <input type="number" id="taskDuration" placeholder="Duración" class="w-full p-1.5 rounded bg-slate-900 border border-slate-700 text-white text-[10px] outline-none">
+                            <select id="taskDurationUnit" class="p-1.5 rounded bg-slate-900 border border-slate-700 text-white text-[10px] outline-none">
+                                <option value="min">min</option>
+                                <option value="h">h</option>
+                            </select>
+                        </div>
                     </div>
                     
                     <div class="flex items-center gap-2">
@@ -147,7 +153,14 @@
                     <select id="subUrg" class="p-2 rounded bg-slate-900 border border-slate-700 text-xs text-white"><option value="3">Muy Urgente</option><option value="2">Pronta</option><option value="1">Poco Urgente</option></select>
                     <select id="subComp" class="p-2 rounded bg-slate-900 border border-slate-700 text-xs text-white"><option value="1">Esfuerzo Bajo</option><option value="2">Esfuerzo Medio</option><option value="3">Esfuerzo Alto</option></select>
                 </div>
-                <input type="number" id="subDuration" placeholder="Duración (min)" class="w-full p-2 rounded bg-slate-900 border border-slate-700 text-white text-xs">
+                
+                <div class="flex gap-2">
+                    <input type="number" id="subDuration" placeholder="Duración" class="w-full p-2 rounded bg-slate-900 border border-slate-700 text-white text-xs">
+                    <select id="subDurationUnit" class="p-2 rounded bg-slate-900 border border-slate-700 text-white text-xs shrink-0 outline-none">
+                        <option value="min">min</option>
+                        <option value="h">h</option>
+                    </select>
+                </div>
 
                 <div class="flex gap-2">
                     <button onclick="toggleModal('subtaskModal')" class="flex-1 bg-slate-700 py-2 rounded text-white text-sm">Cancelar</button>
@@ -214,6 +227,7 @@
                 document.getElementById('taskStartDate').value = t.startDate;
                 document.getElementById('taskTime').value = t.time || "";
                 document.getElementById('taskDuration').value = t.duration || "";
+                document.getElementById('taskDurationUnit').value = t.durationUnit || "min";
                 document.getElementById('isRecurring').checked = t.isRecurring;
                 
                 document.querySelectorAll('#daysSelector input').forEach(cb => {
@@ -275,6 +289,7 @@
                 document.getElementById('subUrg').value = s.u;
                 document.getElementById('subComp').value = s.c;
                 document.getElementById('subDuration').value = s.duration || "";
+                document.getElementById('subDurationUnit').value = s.durationUnit || "min";
                 
                 document.getElementById('subtaskModalTitle').innerText = "Editando Subtarea";
                 document.getElementById('btnSaveSubtask').innerText = "Actualizar";
@@ -296,6 +311,7 @@
                 c: parseInt(document.getElementById(isSub ? 'subComp' : 'comp').value),
                 time: isSub ? "" : document.getElementById('taskTime').value,
                 duration: document.getElementById(isSub ? 'subDuration' : 'taskDuration').value,
+                durationUnit: document.getElementById(isSub ? 'subDurationUnit' : 'taskDurationUnit').value,
                 startDate: isSub ? toLocalISO(new Date()) : document.getElementById('taskStartDate').value,
                 days: isSub ? weekDays : Array.from(document.querySelectorAll('#daysSelector input:checked')).map(cb => cb.value),
                 isRecurring: isSub ? false : document.getElementById('isRecurring').checked,
@@ -320,7 +336,7 @@
                             <p class="text-[11px] font-bold text-slate-100 truncate">${hasSubtasks && !isMonth ? (isExpanded ? '▼ ' : '▶ ') : ''}${t.title}</p>
                             <div class="flex gap-2 items-center">
                                 ${t.time && !isMonth ? `<span class="text-[9px] text-sky-400">🕒 ${t.time}</span>` : ''}
-                                ${t.duration ? `<span class="text-[9px] text-slate-500">⏳ ${t.duration}m</span>` : ''}
+                                ${t.duration ? `<span class="text-[9px] text-slate-500">⏳ ${t.duration}${t.durationUnit === 'h' ? 'h' : 'm'}</span>` : ''}
                             </div>
                         </div>
                         <div class="flex gap-1 shrink-0">
@@ -389,7 +405,6 @@
                 board.innerHTML += colHtml;
             }
 
-            // --- CORRECCIÓN DE ETIQUETAS DINÁMICAS ---
             let label = "";
             if (currentView === 'day') {
                 label = baseDate.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -489,6 +504,10 @@
 
         function clearForm(id) { 
             document.querySelectorAll(`#${id} input[type="text"], #${id} input[type="number"], #${id} input[type="hidden"], #${id} textarea`).forEach(i => i.value = ""); 
+            
+            if(document.getElementById('taskDurationUnit')) document.getElementById('taskDurationUnit').value = 'min';
+            if(document.getElementById('subDurationUnit')) document.getElementById('subDurationUnit').value = 'min';
+
             if(id === 'mainForm') {
                 document.getElementById('formTitle').innerText = "Nueva Tarea Maestra";
                 document.getElementById('btnSubmitTask').innerText = "Crear Tarea";
