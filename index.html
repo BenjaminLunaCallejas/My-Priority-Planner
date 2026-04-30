@@ -154,8 +154,20 @@
                     <select id="subUrg" class="p-2 rounded bg-slate-900 border border-slate-700 text-xs text-white"><option value="3">Muy Urgente</option><option value="2">Pronta</option><option value="1">Poco Urgente</option></select>
                     <select id="subComp" class="p-2 rounded bg-slate-900 border border-slate-700 text-xs text-white"><option value="1">Esfuerzo Bajo</option><option value="2">Esfuerzo Medio</option><option value="3">Esfuerzo Alto</option></select>
                 </div>
+
+                <div class="grid grid-cols-2 gap-2 p-2 bg-slate-900/50 rounded border border-slate-700">
+                    <div class="flex flex-col">
+                        <label class="text-[9px] text-sky-400 font-bold uppercase">Fecha de Inicio</label>
+                        <input type="date" id="subStartDate" class="bg-transparent text-white text-[10px] outline-none" style="color-scheme: dark;">
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-[9px] text-red-400 font-bold uppercase">Fecha de Entrega</label>
+                        <input type="date" id="subDueDate" class="bg-transparent text-white text-[10px] outline-none" style="color-scheme: dark;">
+                    </div>
+                </div>
                 
                 <div class="flex gap-2">
+                    <input type="time" id="subTime" class="p-2 rounded bg-slate-900 border border-slate-700 text-white text-xs" style="color-scheme: dark;">
                     <input type="number" id="subDuration" placeholder="Duración" class="w-full p-2 rounded bg-slate-900 border border-slate-700 text-white text-xs">
                     <select id="subDurationUnit" class="p-2 rounded bg-slate-900 border border-slate-700 text-white text-xs shrink-0 outline-none">
                         <option value="min">min</option>
@@ -241,7 +253,8 @@
                 document.getElementById('imp').value = t.i;
                 document.getElementById('urg').value = t.u;
                 document.getElementById('comp').value = t.c;
-                document.getElementById('taskStartDate').value = t.startDate;
+                document.getElementById('taskStartDate').value = t.startDate || "";
+                document.getElementById('taskDueDate').value = t.dueDate || "";
                 document.getElementById('taskTime').value = t.time || "";
                 document.getElementById('taskDuration').value = t.duration || "";
                 document.getElementById('taskDurationUnit').value = t.durationUnit || "min";
@@ -306,6 +319,9 @@
                 document.getElementById('subImp').value = s.i;
                 document.getElementById('subUrg').value = s.u;
                 document.getElementById('subComp').value = s.c;
+                document.getElementById('subStartDate').value = s.startDate || "";
+                document.getElementById('subDueDate').value = s.dueDate || "";
+                document.getElementById('subTime').value = s.time || "";
                 document.getElementById('subDuration').value = s.duration || "";
                 document.getElementById('subDurationUnit').value = s.durationUnit || "min";
                 
@@ -327,10 +343,11 @@
                 i: parseInt(document.getElementById(isSub ? 'subImp' : 'imp').value),
                 u: parseInt(document.getElementById(isSub ? 'subUrg' : 'urg').value),
                 c: parseInt(document.getElementById(isSub ? 'subComp' : 'comp').value),
-                time: isSub ? "" : document.getElementById('taskTime').value,
+                time: isSub ? document.getElementById('subTime').value : document.getElementById('taskTime').value,
                 duration: document.getElementById(isSub ? 'subDuration' : 'taskDuration').value,
                 durationUnit: document.getElementById(isSub ? 'subDurationUnit' : 'taskDurationUnit').value,
-                startDate: isSub ? toLocalISO(new Date()) : document.getElementById('taskStartDate').value,
+                startDate: document.getElementById(isSub ? 'subStartDate' : 'taskStartDate').value,
+                dueDate: document.getElementById(isSub ? 'subDueDate' : 'taskDueDate').value,
                 days: isSub ? weekDays : Array.from(document.querySelectorAll('#daysSelector input:checked')).map(cb => cb.value),
                 isRecurring: isSub ? false : document.getElementById('isRecurring').checked,
                 completed: false,
@@ -369,7 +386,15 @@
                         <textarea oninput="updateNote(${t.id}, this.value)" class="notes-area w-full bg-slate-950/50 p-1.5 mt-2 rounded border border-slate-800 text-slate-400 outline-none h-12 resize-none">${t.notes || ""}</textarea>
                         ${hasSubtasks ? `
                             <div class="subtask-container">
-                                ${t.subtasks.filter(s => !s.completed).map(s => createDeepTaskHTML(s, t.id, currentDate)).join('')}
+                                ${t.subtasks.filter(s => !s.completed).sort((a, b) => {
+                                    if (a.time && b.time) {
+                                        const timeCompare = a.time.localeCompare(b.time);
+                                        return timeCompare !== 0 ? timeCompare : b.score - a.score;
+                                    }
+                                    if (a.time && !b.time) return -1;
+                                    if (!a.time && b.time) return 1;
+                                    return b.score - a.score;
+                                }).map(s => createDeepTaskHTML(s, t.id, currentDate)).join('')}
                             </div>
                         ` : ''}
                     ` : ''}
@@ -519,12 +544,24 @@
                 let subtasksHtml = '';
                 if (hasActiveSubtasks && isExpanded) {
                     subtasksHtml = `<div class="mt-2 pl-4 border-l-2 border-slate-600 space-y-2 w-full">`;
-                    t.subtasks.filter(s => !s.completed).forEach(s => {
+                    
+                    t.subtasks.filter(s => !s.completed).sort((a, b) => {
+                        if (a.time && b.time) {
+                            const timeCompare = a.time.localeCompare(b.time);
+                            return timeCompare !== 0 ? timeCompare : b.score - a.score;
+                        }
+                        if (a.time && !b.time) return -1;
+                        if (!a.time && b.time) return 1;
+                        return b.score - a.score;
+                    }).forEach(s => {
                         subtasksHtml += `
                         <div class="bg-slate-800 p-3 rounded-lg border border-slate-700 flex justify-between items-center gap-2">
                             <div>
                                 <h5 class="font-bold text-slate-200 text-xs">${s.title}</h5>
-                                ${s.duration ? `<span class="text-[10px] text-slate-500">⏳ ${s.duration}${s.durationUnit}</span>` : ''}
+                                <div class="flex gap-2 items-center mt-1">
+                                    ${s.time ? `<span class="text-[9px] text-sky-400">🕒 ${s.time}</span>` : ''}
+                                    ${s.duration ? `<span class="text-[9px] text-slate-500">⏳ ${s.duration}${s.durationUnit}</span>` : ''}
+                                </div>
                             </div>
                             <div class="flex gap-2 shrink-0">
                                 <button onclick="toggleModal('listModal'); openEditSubtask(${s.id}, ${t.id})" class="bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-md text-[10px] text-white transition shadow-sm">✎ Editar</button>
@@ -684,12 +721,15 @@
                 document.getElementById('btnSubmitTask').innerText = "Crear Tarea";
                 document.getElementById('btnCancelEdit').classList.add('hidden');
                 document.getElementById('taskStartDate').value = toLocalISO(new Date());
+            } else if (id === 'subtaskForm') {
+                document.getElementById('subStartDate').value = toLocalISO(new Date());
             }
         }
 
         renderKanban();
         renderCompleted();
         document.getElementById('taskStartDate').value = toLocalISO(new Date());
+        document.getElementById('subStartDate').value = toLocalISO(new Date());
     </script>
 
     <script type="module">
