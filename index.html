@@ -197,7 +197,7 @@
     <script>
         window.tasks = JSON.parse(localStorage.getItem('priorityTasksPro')) || [];
         let expandedTasks = new Set();
-        let listExpandedTasks = new Set(); // Nuevo estado para el modal de lista
+        let listExpandedTasks = new Set();
         let currentView = 'week'; 
         let baseDate = new Date(); 
 
@@ -265,7 +265,8 @@
             if (editId) {
                 recursiveAction(window.tasks, parseInt(editId), (list, idx) => {
                     const oldSubtasks = list[idx].subtasks;
-                    list[idx] = {...taskData, id: parseInt(editId), subtasks: oldSubtasks};
+                    const oldCompletedDates = list[idx].completedDates || [];
+                    list[idx] = {...taskData, id: parseInt(editId), subtasks: oldSubtasks, completedDates: oldCompletedDates};
                 });
             } else {
                 window.tasks.push(taskData);
@@ -333,6 +334,7 @@
                 days: isSub ? weekDays : Array.from(document.querySelectorAll('#daysSelector input:checked')).map(cb => cb.value),
                 isRecurring: isSub ? false : document.getElementById('isRecurring').checked,
                 completed: false,
+                completedDates: [], // ADICIÓN: Matriz para registrar el historial de recurrencias
                 subtasks: [],
                 score: (parseInt(document.getElementById(isSub ? 'subImp' : 'imp').value) * 3) + 
                        (parseInt(document.getElementById(isSub ? 'subUrg' : 'urg').value) * 2) - 
@@ -340,7 +342,8 @@
             };
         }
 
-        function createDeepTaskHTML(t, parentId = null) {
+        // ADICIÓN: Pase de fecha actual en la generación del HTML
+        function createDeepTaskHTML(t, parentId = null, currentDate = null) {
             const isMonth = currentView === 'month';
             const hasSubtasks = t.subtasks && t.subtasks.length > 0;
             const isExpanded = !isMonth && expandedTasks.has(t.id);
@@ -359,7 +362,7 @@
                         <div class="flex gap-1 shrink-0">
                             <button onclick="${parentId ? `openEditSubtask(${t.id}, ${parentId})` : `openEditTask(${t.id})`}" title="Editar" class="text-[10px] text-slate-500 hover:text-sky-400">✎</button>
                             ${!parentId ? `<button onclick="openSubtaskModal(${t.id}, '${t.title}')" class="text-[10px] text-sky-500 hover:text-sky-300">+</button>` : ''}
-                            <button onclick="completeTask(${t.id})" class="text-[10px] text-emerald-500 hover:text-emerald-300">✓</button>
+                            <button onclick="completeTask(${t.id}, ${currentDate ? `'${currentDate}'` : 'null'})" class="text-[10px] text-emerald-500 hover:text-emerald-300">✓</button>
                             <button onclick="deleteTask(${t.id})" class="text-[10px] text-red-500 hover:text-red-300">×</button>
                         </div>
                     </div>
@@ -367,7 +370,7 @@
                         <textarea oninput="updateNote(${t.id}, this.value)" class="notes-area w-full bg-slate-950/50 p-1.5 mt-2 rounded border border-slate-800 text-slate-400 outline-none h-12 resize-none">${t.notes || ""}</textarea>
                         ${hasSubtasks ? `
                             <div class="subtask-container">
-                                ${t.subtasks.filter(s => !s.completed).map(s => createDeepTaskHTML(s, t.id)).join('')}
+                                ${t.subtasks.filter(s => !s.completed).map(s => createDeepTaskHTML(s, t.id, currentDate)).join('')}
                             </div>
                         ` : ''}
                     ` : ''}
@@ -404,9 +407,11 @@
                 let dayName = weekDays[colDate.getDay() === 0 ? 6 : colDate.getDay() - 1];
                 let isCurrentMonth = colDate.getMonth() === baseDate.getMonth();
 
-                // MODIFICACIÓN APLICADA: Criterio jerárquico condicional (Tiempo > Puntuación heurística)
                 const dayTasks = window.tasks.filter(t => {
                     if (t.completed) return false;
+                    // ADICIÓN: Filtro para excluir la instancia si la fecha exacta ya fue completada
+                    if (t.isRecurring && t.completedDates && t.completedDates.includes(colISO)) return false;
+                    
                     return t.isRecurring ? (t.days.includes(dayName) && colISO >= t.startDate) : (t.startDate === colISO);
                 }).sort((a, b) => {
                     if (a.time && b.time) return a.time.localeCompare(b.time);
@@ -422,7 +427,7 @@
                             ${dayTasks.length > 0 ? `<span class="bg-slate-900 text-[9px] px-1.5 rounded-full text-slate-500">${dayTasks.length}</span>` : ''}
                         </div>
                         <div class="p-2 overflow-y-auto flex-grow scroll-container">
-                            ${dayTasks.map(t => createDeepTaskHTML(t)).join('')}
+                            ${dayTasks.map(t => createDeepTaskHTML(t, null, colISO)).join('')}
                         </div>
                     </div>`;
                 board.innerHTML += colHtml;
@@ -447,7 +452,6 @@
             document.getElementById('weekLabel').innerText = label.toUpperCase();
         }
 
-        // --- Nuevas Funciones para el Buscador y Visor de Lista ---
         function openListView() {
             document.getElementById('searchInput').value = '';
             renderListView();
@@ -465,6 +469,8 @@
             const container = document.getElementById('listViewContainer');
             const stats = document.getElementById('listStats');
             const query = document.getElementById('searchInput').value.toLowerCase();
+            const todayISO = toLocalISO(new Date()); // Se establece la fecha de hoy como fallback
+            
             container.innerHTML = '';
 
             const flatTasks = [];
@@ -485,7 +491,6 @@
                 (t.notes && t.notes.toLowerCase().includes(query))
             );
 
-            // MODIFICACIÓN APLICADA: Criterio jerárquico condicional para la vista de lista global
             filtered.sort((a, b) => {
                 if (a.startDate !== b.startDate) return a.startDate.localeCompare(b.startDate);
                 if (a.time && b.time) return a.time.localeCompare(b.time);
@@ -519,7 +524,7 @@
                             </div>
                             <div class="flex gap-2 shrink-0">
                                 <button onclick="toggleModal('listModal'); openEditSubtask(${s.id}, ${t.id})" class="bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-md text-[10px] text-white transition shadow-sm">✎ Editar</button>
-                                <button onclick="completeTask(${s.id}); renderListView();" class="bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 rounded-md text-[10px] text-white transition shadow-sm">✓ Completar</button>
+                                <button onclick="completeTask(${s.id}, '${todayISO}'); renderListView();" class="bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 rounded-md text-[10px] text-white transition shadow-sm">✓ Completar</button>
                             </div>
                         </div>`;
                     });
@@ -547,7 +552,7 @@
                         </div>
                         <div class="flex gap-2 shrink-0 mt-3 md:mt-0">
                             <button onclick="toggleModal('listModal'); ${isSub ? `openEditSubtask(${t.id}, ${t.parentId})` : `openEditTask(${t.id})`}" class="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-md text-xs text-white transition shadow-sm">✎ Editar</button>
-                            <button onclick="completeTask(${t.id}); renderListView();" class="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-md text-xs text-white transition shadow-sm">✓ Completar</button>
+                            <button onclick="completeTask(${t.id}, '${todayISO}'); renderListView();" class="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-md text-xs text-white transition shadow-sm">✓ Completar</button>
                         </div>
                     </div>
                     ${subtasksHtml}
@@ -556,7 +561,6 @@
 
             stats.innerText = `Mostrando ${filtered.length} tarea(s) en total`;
         }
-        // -----------------------------------------------------------
 
         function toggleTaskExpansion(id) {
             if (currentView === 'month') return;
@@ -594,10 +598,18 @@
             return false;
         }
 
-        function completeTask(id) {
+        // ADICIÓN: Evaluación condicional de finalización (Instancia vs Global)
+        function completeTask(id, targetDate = null) {
             recursiveAction(window.tasks, id, (list, idx) => {
-                list[idx].completed = true;
-                if (list[idx].subtasks) list[idx].subtasks.forEach(s => s.completed = true);
+                if (list[idx].isRecurring && targetDate) {
+                    if (!list[idx].completedDates) list[idx].completedDates = [];
+                    if (!list[idx].completedDates.includes(targetDate)) {
+                        list[idx].completedDates.push(targetDate);
+                    }
+                } else {
+                    list[idx].completed = true;
+                    if (list[idx].subtasks) list[idx].subtasks.forEach(s => s.completed = true);
+                }
             });
             saveAndRender();
         }
@@ -605,6 +617,16 @@
         function undoTask(id) {
             recursiveAction(window.tasks, id, (list, idx) => {
                 list[idx].completed = false;
+            });
+            saveAndRender();
+        }
+
+        // ADICIÓN: Función para revertir la finalización cronológica de una recurrencia
+        function undoRecurringTask(id, date) {
+            recursiveAction(window.tasks, id, (list, idx) => {
+                if (list[idx].completedDates) {
+                    list[idx].completedDates = list[idx].completedDates.filter(d => d !== date);
+                }
             });
             saveAndRender();
         }
@@ -620,20 +642,31 @@
             window.dispatchEvent(new CustomEvent('tasksUpdated', { detail: window.tasks }));
         }
 
+        // ADICIÓN: Desglose de instancias recurrentes completadas en el historial
         function renderCompleted() {
             const list = document.getElementById('completedList');
             list.innerHTML = '';
+            
             const getFlat = (tasks, acc = []) => {
-                tasks.forEach(t => { if (t.completed) acc.push(t); if (t.subtasks) getFlat(t.subtasks, acc); });
+                tasks.forEach(t => { 
+                    if (t.completed) acc.push(t); 
+                    if (t.isRecurring && t.completedDates) {
+                        t.completedDates.forEach(date => {
+                            acc.push({...t, title: `${t.title} (${date})`, isRecurringInstance: true, instanceDate: date });
+                        });
+                    }
+                    if (t.subtasks) getFlat(t.subtasks, acc); 
+                });
                 return acc;
             };
+
             getFlat(window.tasks).forEach(t => {
                 list.innerHTML += `
                 <div class="bg-slate-900/50 p-2 rounded border border-slate-700 flex justify-between items-center">
                     <span class="text-xs line-through text-slate-500">${t.title}</span>
                     <div class="flex gap-2">
-                        <button onclick="undoTask(${t.id})" title="Deshacer" class="text-sky-400 text-[12px]">↺</button>
-                        <button onclick="deleteTask(${t.id})" class="text-red-400 text-[10px]">Eliminar</button>
+                        <button onclick="${t.isRecurringInstance ? `undoRecurringTask(${t.id}, '${t.instanceDate}')` : `undoTask(${t.id})`}" title="Deshacer" class="text-sky-400 text-[12px]">↺</button>
+                        ${!t.isRecurringInstance ? `<button onclick="deleteTask(${t.id})" class="text-red-400 text-[10px]">Eliminar</button>` : ''}
                     </div>
                 </div>`;
             });
