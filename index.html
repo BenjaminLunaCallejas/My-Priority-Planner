@@ -404,10 +404,16 @@
                 let dayName = weekDays[colDate.getDay() === 0 ? 6 : colDate.getDay() - 1];
                 let isCurrentMonth = colDate.getMonth() === baseDate.getMonth();
 
+                // MODIFICACIÓN APLICADA: Criterio jerárquico condicional (Tiempo > Puntuación heurística)
                 const dayTasks = window.tasks.filter(t => {
                     if (t.completed) return false;
                     return t.isRecurring ? (t.days.includes(dayName) && colISO >= t.startDate) : (t.startDate === colISO);
-                }).sort((a,b) => b.score - a.score);
+                }).sort((a, b) => {
+                    if (a.time && b.time) return a.time.localeCompare(b.time);
+                    if (a.time && !b.time) return -1;
+                    if (!a.time && b.time) return 1;
+                    return b.score - a.score;
+                });
 
                 let colHtml = `
                     <div class="${currentView === 'month' ? 'min-h-[140px]' : 'min-w-[280px] w-[280px] h-full'} bg-slate-800/60 rounded-xl border ${colISO === todayISO ? 'border-sky-500 bg-slate-800' : 'border-slate-700'} flex flex-col ${!isCurrentMonth && currentView === 'month' ? 'opacity-20' : ''}">
@@ -479,8 +485,12 @@
                 (t.notes && t.notes.toLowerCase().includes(query))
             );
 
+            // MODIFICACIÓN APLICADA: Criterio jerárquico condicional para la vista de lista global
             filtered.sort((a, b) => {
                 if (a.startDate !== b.startDate) return a.startDate.localeCompare(b.startDate);
+                if (a.time && b.time) return a.time.localeCompare(b.time);
+                if (a.time && !b.time) return -1;
+                if (!a.time && b.time) return 1;
                 return b.score - a.score;
             });
 
