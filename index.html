@@ -22,10 +22,23 @@
             padding-bottom: 15px; /* Espacio para la barra */
         }
 
-        /* AJUSTE: Scrollbar vertical para el visor mensual */
+        /* Scrollbar vertical para el visor mensual */
         .view-month #kanbanBoard {
             overflow-y: auto !important;
             max-height: 100%;
+        }
+
+        /* AJUSTE: Scrollbar vertical y centrado para el visor de DÍA */
+        .view-day #kanbanBoard {
+            overflow-y: auto !important;
+            display: flex;
+            justify-content: center; /* Centra la columna horizontalmente */
+        }
+
+        /* Forzamos que la columna del día crezca según su contenido para activar el scroll del visor */
+        .view-day #kanbanBoard > div {
+            height: fit-content !important;
+            min-height: 100%;
         }
 
         #authOverlay { background: rgba(15, 23, 42, 0.98); backdrop-filter: blur(10px); z-index: 100; }
@@ -146,6 +159,7 @@
         </div>
     </div>
 
+    <!-- Modales y scripts permanecen iguales -->
     <div id="subtaskModal" class="fixed inset-0 bg-black/80 hidden flex justify-center items-center z-[70] p-4 backdrop-blur-sm">
         <div class="bg-slate-800 p-6 rounded-xl w-full max-w-md border border-sky-500/30">
             <h2 id="subtaskModalTitle" class="text-lg font-bold text-sky-400 mb-4">Nueva Subtarea</h2>
@@ -490,7 +504,6 @@
                     return b.score - a.score;
                 });
 
-                // AJUSTE: Lógica para limitar a 3 tareas y mostrar "X más" en vista mensual
                 let tasksHtml = "";
                 if (currentView === 'month' && dayTasks.length > 3) {
                     tasksHtml = dayTasks.slice(0, 3).map(t => createDeepTaskHTML(t, null, colISO)).join('');
@@ -531,6 +544,7 @@
             document.getElementById('weekLabel').innerText = label.toUpperCase();
         }
 
+        // Resto de las funciones (openListView, renderListView, etc.) sin cambios
         function openListView() {
             document.getElementById('searchInput').value = '';
             renderListView();
