@@ -22,6 +22,12 @@
             padding-bottom: 15px; /* Espacio para la barra */
         }
 
+        /* AJUSTE: Scrollbar vertical para el visor mensual */
+        .view-month #kanbanBoard {
+            overflow-y: auto !important;
+            max-height: 100%;
+        }
+
         #authOverlay { background: rgba(15, 23, 42, 0.98); backdrop-filter: blur(10px); z-index: 100; }
         .subtask-container { border-left: 2px solid #334155; margin-left: 0.5rem; padding-left: 0.5rem; margin-top: 0.5rem; }
         .notes-area { scrollbar-width: thin; font-size: 11px; }
@@ -175,7 +181,6 @@
                     </select>
                 </div>
 
-                <!-- ADICIÓN: Selector de Días y Recurrencia para Subtareas -->
                 <div id="subDaysSelector" class="grid grid-cols-4 gap-1 text-[9px] mt-2">
                     <label class="flex items-center space-x-1"><input type="checkbox" value="Lunes" checked> <span>Lu</span></label>
                     <label class="flex items-center space-x-1"><input type="checkbox" value="Martes"> <span>Ma</span></label>
@@ -342,8 +347,6 @@
                 document.getElementById('subTime').value = s.time || "";
                 document.getElementById('subDuration').value = s.duration || "";
                 document.getElementById('subDurationUnit').value = s.durationUnit || "min";
-                
-                // ADICIÓN: Extracción de recurrencia en edición de subtareas
                 document.getElementById('subIsRecurring').checked = s.isRecurring || false;
                 document.querySelectorAll('#subDaysSelector input').forEach(cb => {
                     cb.checked = s.days ? s.days.includes(cb.value) : false;
@@ -372,7 +375,6 @@
                 durationUnit: document.getElementById(isSub ? 'subDurationUnit' : 'taskDurationUnit').value,
                 startDate: document.getElementById(isSub ? 'subStartDate' : 'taskStartDate').value,
                 dueDate: document.getElementById(isSub ? 'subDueDate' : 'taskDueDate').value,
-                // ADICIÓN: Captura selectiva de parámetros de repetición basados en el contexto (Tarea vs Subtarea)
                 days: isSub ? Array.from(document.querySelectorAll('#subDaysSelector input:checked')).map(cb => cb.value) : Array.from(document.querySelectorAll('#daysSelector input:checked')).map(cb => cb.value),
                 isRecurring: isSub ? document.getElementById('subIsRecurring').checked : document.getElementById('isRecurring').checked,
                 completed: false,
@@ -414,18 +416,15 @@
                                 ${t.subtasks.filter(s => {
                                     if (s.completed) return false;
                                     if (currentDate) {
-                                        // ADICIÓN: Bloqueo cronológico estricto para subtareas en el Kanban
                                         if (currentDate < s.startDate) return false;
-                                        
                                         if (s.isRecurring) {
                                             const [year, month, day] = currentDate.split('-');
                                             const localDate = new Date(year, month - 1, day);
                                             const dayName = weekDays[localDate.getDay() === 0 ? 6 : localDate.getDay() - 1];
-                                            
                                             if (s.completedDates && s.completedDates.includes(currentDate)) return false;
                                             return s.days ? s.days.includes(dayName) : false;
                                         }
-                                        return true; // Subtarea única, se transfiere a fechas posteriores si no se completa
+                                        return true;
                                     }
                                     return true;
                                 }).sort((a, b) => {
@@ -475,14 +474,12 @@
 
                 const dayTasks = window.tasks.filter(t => {
                     if (t.completed) return false;
-                    // ADICIÓN: Bloqueo cronológico estricto para tareas maestras en el Kanban
                     if (colISO < t.startDate) return false;
-                    
                     if (t.isRecurring) {
                         if (t.completedDates && t.completedDates.includes(colISO)) return false;
                         return t.days.includes(dayName);
                     }
-                    return true; // Tarea única, se transfiere a fechas posteriores si no se completa
+                    return true;
                 }).sort((a, b) => {
                     if (a.time && b.time) {
                         const timeCompare = a.time.localeCompare(b.time);
@@ -493,6 +490,15 @@
                     return b.score - a.score;
                 });
 
+                // AJUSTE: Lógica para limitar a 3 tareas y mostrar "X más" en vista mensual
+                let tasksHtml = "";
+                if (currentView === 'month' && dayTasks.length > 3) {
+                    tasksHtml = dayTasks.slice(0, 3).map(t => createDeepTaskHTML(t, null, colISO)).join('');
+                    tasksHtml += `<div class="text-[9px] text-sky-400 font-bold text-center py-1 bg-slate-900/40 rounded border border-sky-900/30 mt-1 cursor-default">${dayTasks.length - 3} más...</div>`;
+                } else {
+                    tasksHtml = dayTasks.map(t => createDeepTaskHTML(t, null, colISO)).join('');
+                }
+
                 let colHtml = `
                     <div class="${currentView === 'month' ? 'min-h-[140px]' : 'min-w-[280px] w-[280px] h-full'} bg-slate-800/60 rounded-xl border ${colISO === todayISO ? 'border-sky-500 bg-slate-800' : 'border-slate-700'} flex flex-col ${!isCurrentMonth && currentView === 'month' ? 'opacity-20' : ''}">
                         <div class="p-2 border-b border-slate-700 flex justify-between items-center shrink-0">
@@ -500,7 +506,7 @@
                             ${dayTasks.length > 0 ? `<span class="bg-slate-900 text-[9px] px-1.5 rounded-full text-slate-500">${dayTasks.length}</span>` : ''}
                         </div>
                         <div class="p-2 overflow-y-auto flex-grow scroll-container">
-                            ${dayTasks.map(t => createDeepTaskHTML(t, null, colISO)).join('')}
+                            ${tasksHtml}
                         </div>
                     </div>`;
                 board.innerHTML += colHtml;
@@ -584,14 +590,12 @@
             filtered.forEach(t => {
                 const isSub = !!t.parentTitle;
                 const colorClass = t.score >= 10 ? 'border-l-red-500 text-red-400' : (t.score >= 7 ? 'border-l-yellow-500 text-yellow-400' : 'border-l-emerald-500 text-emerald-400');
-                
                 const hasActiveSubtasks = !isSub && t.subtasks && t.subtasks.filter(st => !st.completed).length > 0;
                 const isExpanded = listExpandedTasks.has(t.id);
                 
                 let subtasksHtml = '';
                 if (hasActiveSubtasks && isExpanded) {
                     subtasksHtml = `<div class="mt-2 pl-4 border-l-2 border-slate-600 space-y-2 w-full">`;
-                    
                     t.subtasks.filter(s => !s.completed).sort((a, b) => {
                         if (a.time && b.time) {
                             const timeCompare = a.time.localeCompare(b.time);
@@ -731,7 +735,6 @@
         function renderCompleted() {
             const list = document.getElementById('completedList');
             list.innerHTML = '';
-            
             const getFlat = (tasks, acc = []) => {
                 tasks.forEach(t => { 
                     if (t.completed) acc.push(t); 
@@ -744,7 +747,6 @@
                 });
                 return acc;
             };
-
             getFlat(window.tasks).forEach(t => {
                 list.innerHTML += `
                 <div class="bg-slate-900/50 p-2 rounded border border-slate-700 flex justify-between items-center">
@@ -759,17 +761,14 @@
 
         function clearForm(id) { 
             document.querySelectorAll(`#${id} input[type="text"], #${id} input[type="number"], #${id} input[type="hidden"], #${id} textarea`).forEach(i => i.value = ""); 
-            
             if(document.getElementById('taskDurationUnit')) document.getElementById('taskDurationUnit').value = 'min';
             if(document.getElementById('subDurationUnit')) document.getElementById('subDurationUnit').value = 'min';
-
             if(id === 'mainForm') {
                 document.getElementById('formTitle').innerText = "Nueva Tarea Maestra";
                 document.getElementById('btnSubmitTask').innerText = "Crear Tarea";
                 document.getElementById('btnCancelEdit').classList.add('hidden');
                 document.getElementById('taskStartDate').value = toLocalISO(new Date());
             } else if (id === 'subtaskForm') {
-                // ADICIÓN: Reinicio limpio de campos de recurrencia en el modal de subtareas
                 document.getElementById('subStartDate').value = toLocalISO(new Date());
                 document.getElementById('subIsRecurring').checked = false;
                 document.querySelectorAll('#subDaysSelector input').forEach(cb => {
