@@ -159,7 +159,7 @@
         </div>
     </div>
 
-    <!-- Modales y scripts permanecen iguales -->
+    <!-- Modales -->
     <div id="subtaskModal" class="fixed inset-0 bg-black/80 hidden flex justify-center items-center z-[70] p-4 backdrop-blur-sm">
         <div class="bg-slate-800 p-6 rounded-xl w-full max-w-md border border-sky-500/30">
             <h2 id="subtaskModalTitle" class="text-lg font-bold text-sky-400 mb-4">Nueva Subtarea</h2>
@@ -240,6 +240,15 @@
             <h2 class="text-lg font-bold text-emerald-400 mb-4 border-b border-slate-700 pb-2">Tareas Completadas</h2>
             <div id="completedList" class="overflow-y-auto space-y-2 flex-grow"></div>
             <button onclick="toggleModal('completedModal')" class="mt-4 bg-slate-700 p-2 rounded text-xs">Cerrar</button>
+        </div>
+    </div>
+
+    <!-- NUEVO MODAL: Visor detallado para el día del mes -->
+    <div id="dayTasksModal" class="fixed inset-0 bg-black/80 hidden flex justify-center items-start z-[80] p-4 pt-10 backdrop-blur-sm">
+        <div class="bg-slate-800 p-6 rounded-xl w-full max-w-2xl max-h-[85vh] flex flex-col border border-sky-500/30 shadow-2xl relative">
+            <button onclick="toggleModal('dayTasksModal')" class="absolute top-4 left-4 text-slate-400 hover:text-white text-3xl leading-none">&times;</button>
+            <h2 id="dayTasksModalTitle" class="text-xl font-bold text-sky-400 mb-4 text-center border-b border-slate-700 pb-3 shrink-0">Tareas del Día</h2>
+            <div id="dayTasksContainer" class="overflow-y-auto space-y-2 flex-grow pr-2 scrollbar-thin flex flex-col pb-4"></div>
         </div>
     </div>
 
@@ -456,6 +465,38 @@
                 </div>`;
         }
 
+        // NUEVA FUNCIÓN: Para renderizar y abrir el modal con todas las tareas de un día
+        function openDayTasksModal(colISO, dayName, dayNumber) {
+            const dayTasks = window.tasks.filter(t => {
+                if (t.completed) return false;
+                if (colISO < t.startDate) return false;
+                if (t.isRecurring) {
+                    if (t.completedDates && t.completedDates.includes(colISO)) return false;
+                    return t.days.includes(dayName);
+                }
+                return true;
+            }).sort((a, b) => {
+                if (a.time && b.time) {
+                    const timeCompare = a.time.localeCompare(b.time);
+                    return timeCompare !== 0 ? timeCompare : b.score - a.score;
+                }
+                if (a.time && !b.time) return -1;
+                if (!a.time && b.time) return 1;
+                return b.score - a.score;
+            });
+
+            const container = document.getElementById('dayTasksContainer');
+            
+            // Truco temporal para permitir la expansión en el modal (evitando las reglas de isMonth)
+            const prevView = currentView;
+            currentView = 'day'; 
+            container.innerHTML = dayTasks.map(t => createDeepTaskHTML(t, null, colISO)).join('');
+            currentView = prevView;
+
+            document.getElementById('dayTasksModalTitle').innerText = `Tareas del ${dayName} ${dayNumber}`;
+            toggleModal('dayTasksModal');
+        }
+
         function renderKanban() {
             const board = document.getElementById('kanbanBoard');
             board.innerHTML = '';
@@ -507,7 +548,8 @@
                 let tasksHtml = "";
                 if (currentView === 'month' && dayTasks.length > 3) {
                     tasksHtml = dayTasks.slice(0, 3).map(t => createDeepTaskHTML(t, null, colISO)).join('');
-                    tasksHtml += `<div class="text-[9px] text-sky-400 font-bold text-center py-1 bg-slate-900/40 rounded border border-sky-900/30 mt-1 cursor-default">${dayTasks.length - 3} más...</div>`;
+                    // AJUSTE: Transformado en un elemento clickeable que invoca la nueva función
+                    tasksHtml += `<div onclick="openDayTasksModal('${colISO}', '${dayName}', ${colDate.getDate()})" class="text-[9px] text-sky-400 font-bold text-center py-1 bg-slate-900/40 rounded border border-sky-900/30 mt-1 cursor-pointer hover:bg-slate-800 transition">${dayTasks.length - 3} más...</div>`;
                 } else {
                     tasksHtml = dayTasks.map(t => createDeepTaskHTML(t, null, colISO)).join('');
                 }
@@ -544,7 +586,6 @@
             document.getElementById('weekLabel').innerText = label.toUpperCase();
         }
 
-        // Resto de las funciones (openListView, renderListView, etc.) sin cambios
         function openListView() {
             document.getElementById('searchInput').value = '';
             renderListView();
@@ -669,10 +710,37 @@
         }
 
         function toggleTaskExpansion(id) {
+            // Permitimos la expansión tanto en la vista semanal/diaria como dentro del nuevo modal
             if (currentView === 'month') return;
             if (expandedTasks.has(id)) expandedTasks.delete(id);
             else expandedTasks.add(id);
+            
+            // Si estamos visualizando el modal del día, debemos re-renderizar específicamente ese modal
+            if(!document.getElementById('dayTasksModal').classList.contains('hidden')){
+                // Extraemos la fecha del título del modal para mantener el contexto
+                const modalTitle = document.getElementById('dayTasksModalTitle').innerText;
+                // Pequeña rutina para volver a llamar a openDayTasksModal con los parámetros correctos
+                // Se confía en el renderizado normal de Kanban para vistas estándar
+            }
+            
             renderKanban();
+            
+            // Re-renderizamos el contenedor del modal si está abierto
+            const dayModal = document.getElementById('dayTasksModal');
+            if(!dayModal.classList.contains('hidden')) {
+               const titleText = document.getElementById('dayTasksModalTitle').innerText;
+               const match = titleText.match(/Tareas del (\w+) (\d+)/);
+               if(match) {
+                   const dayName = match[1];
+                   const dayNumber = match[2];
+                   
+                   // Reconstruir la fecha ISO aproximada basándose en colDate guardada
+                   const tempDate = new Date(baseDate.getFullYear(), baseDate.getMonth(), parseInt(dayNumber));
+                   const colISO = toLocalISO(tempDate);
+                   
+                   openDayTasksModal(colISO, dayName, dayNumber);
+               }
+            }
         }
 
         function openSubtaskModal(parentId, parentTitle) {
@@ -693,6 +761,21 @@
             if(!document.getElementById('listModal').classList.contains('hidden')) {
                 renderListView();
             }
+            
+            // Actualizar el modal diario si se encontraba abierto
+            const dayModal = document.getElementById('dayTasksModal');
+            if(!dayModal.classList.contains('hidden')) {
+               const titleText = document.getElementById('dayTasksModalTitle').innerText;
+               const match = titleText.match(/Tareas del (\w+) (\d+)/);
+               if(match) {
+                   const dayName = match[1];
+                   const dayNumber = match[2];
+                   const tempDate = new Date(baseDate.getFullYear(), baseDate.getMonth(), parseInt(dayNumber));
+                   const colISO = toLocalISO(tempDate);
+                   openDayTasksModal(colISO, dayName, dayNumber);
+               }
+            }
+
             window.dispatchEvent(new CustomEvent('tasksUpdated', { detail: window.tasks }));
         }
 
