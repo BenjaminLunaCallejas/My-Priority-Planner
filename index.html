@@ -64,6 +64,7 @@
                     <button onclick="changeView('week')" id="btnViewWeek" class="px-3 py-1 rounded-md text-xs bg-sky-600 text-white transition">Semana</button>
                     <button onclick="changeView('month')" id="btnViewMonth" class="px-3 py-1 rounded-md text-xs transition">Mes</button>
                 </div>
+                <button onclick="openParetoModal()" class="text-xs bg-amber-600 hover:bg-amber-500 px-4 py-2 rounded-lg text-white font-bold transition flex items-center gap-1 shadow-lg">🎯 Reorganizar Agenda</button>
                 <button onclick="openListView()" class="text-xs bg-sky-600 hover:bg-sky-500 px-4 py-2 rounded-lg text-white font-bold transition flex items-center gap-1 shadow-lg">🔍 Buscar / Lista</button>
                 <button onclick="toggleModal('completedModal')" class="text-xs bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-lg text-slate-200">Historial</button>
                 <div id="userProfile" class="hidden flex items-center gap-2">
@@ -235,6 +236,29 @@
         </div>
     </div>
 
+    <!-- NUEVO: Modal de Reorganización Automática (Pareto) -->
+    <div id="paretoModal" class="fixed inset-0 bg-black/80 hidden flex justify-center items-start z-[65] p-4 pt-10 backdrop-blur-sm">
+        <div class="bg-slate-800 p-6 rounded-xl w-full max-w-4xl h-[85vh] flex flex-col border border-amber-500/30 shadow-2xl">
+            <div class="flex justify-between items-center mb-2 border-b border-slate-700 pb-3 shrink-0">
+                <div>
+                    <h2 class="text-xl font-bold text-amber-400">Optimización de Agenda (Regla de Pareto)</h2>
+                    <p class="text-slate-400 text-xs mt-0.5">Selecciona tus prioridades de la lista cronológica para recalcular la semana automáticamente.</p>
+                </div>
+                <button onclick="toggleModal('paretoModal')" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
+            </div>
+            
+            <div class="bg-slate-900/50 p-3 rounded-lg border border-slate-700 mb-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between shrink-0">
+                <div class="flex flex-col">
+                    <label class="text-[10px] text-amber-400 font-bold uppercase">Fecha de Inicio de Reorganización</label>
+                    <input type="date" id="reorderStartDate" class="bg-transparent text-white text-sm outline-none mt-1 border-b border-slate-600 focus:border-amber-400 pb-0.5" style="color-scheme: dark;">
+                </div>
+                <button onclick="executeParetoReordering()" class="w-full sm:w-auto bg-amber-600 hover:bg-amber-500 text-white font-bold px-6 py-2.5 rounded-lg transition text-sm shadow-md flex items-center justify-center gap-2">🚀 Reestructurar Calendario</button>
+            </div>
+
+            <div id="paretoTasksContainer" class="overflow-y-auto space-y-2 flex-grow pr-2 scrollbar-thin"></div>
+        </div>
+    </div>
+
     <script>
         window.tasks = JSON.parse(localStorage.getItem('priorityTasksPro')) || [];
         let expandedTasks = new Set();
@@ -285,28 +309,22 @@
                 const task = list[idx];
                 
                 if (task.isRecurring) {
-                    // Si es recurrente, no movemos la tarea maestra.
-                    // Creamos una COPIA no recurrente en el nuevo día 
-                    // y marcamos la instancia original como "completada" para ese día.
                     if (sourceDate !== newDateISO) {
                         const newTask = JSON.parse(JSON.stringify(task));
                         newTask.id = Date.now();
                         newTask.isRecurring = false;
                         newTask.startDate = newDateISO;
-                        newTask.dueDate = newDateISO; // Ajuste preventivo
+                        newTask.dueDate = newDateISO; 
                         newTask.completedDates = [];
                         
-                        // Añadimos la copia a la lista principal
                         window.tasks.push(newTask);
                         
-                        // Ocultamos la instancia original del día de origen
                         if (!task.completedDates) task.completedDates = [];
                         if (sourceDate && !task.completedDates.includes(sourceDate)) {
                             task.completedDates.push(sourceDate);
                         }
                     }
                 } else {
-                    // Si no es recurrente, simplemente actualizamos la fecha de inicio
                     task.startDate = newDateISO;
                 }
             });
@@ -455,7 +473,6 @@
             const isExpanded = !currentView.includes('month') && expandedTasks.has(t.id);
             const colorClass = t.score >= 10 ? 'border-l-red-500' : (t.score >= 7 ? 'border-l-yellow-500' : 'border-l-emerald-500');
             
-            // Agregamos atributos de arrastre solo a tareas maestras (no subtareas por ahora para evitar conflictos)
             const dragAttrs = !parentId ? `draggable="true" ondragstart="handleDragStart(event, ${t.id}, '${currentDate}')" ondragend="handleDragEnd(event)"` : "";
 
             return `
@@ -586,7 +603,6 @@
                     tasksHtml = dayTasks.map(t => createDeepTaskHTML(t, null, colISO)).join('');
                 }
 
-                // Agregamos eventos de Drop a la columna
                 let colHtml = `
                     <div ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, '${colISO}')" class="${currentView === 'month' ? 'min-h-[140px]' : 'min-w-[280px] w-[280px] h-full'} bg-slate-800/60 rounded-xl border ${colISO === todayISO ? 'border-sky-500 bg-slate-800' : 'border-slate-700'} flex flex-col ${!isCurrentMonth && currentView === 'month' ? 'opacity-20' : ''} transition-colors">
                         <div class="p-2 border-b border-slate-700 flex justify-between items-center shrink-0">
@@ -803,6 +819,123 @@
             } else if (id === 'subtaskForm') {
                 document.getElementById('subStartDate').value = toLocalISO(new Date());
             }
+        }
+
+        // --- NUEVAS FUNCIONES PARA REORGANIZACIÓN AUTOMÁTICA (PARETTO) ---
+        function openParetoModal() {
+            document.getElementById('reorderStartDate').value = toLocalISO(new Date());
+            renderParetoView();
+            toggleModal('paretoModal');
+        }
+
+        function renderParetoView() {
+            const container = document.getElementById('paretoTasksContainer');
+            container.innerHTML = '';
+
+            // Filtrar solo tareas maestras activas (no completadas)
+            const activeMasterTasks = window.tasks.filter(t => !t.completed);
+
+            // Ordenar cronológicamente (las fechas más cercanas o rezagadas primero)
+            activeMasterTasks.sort((a, b) => {
+                if (!a.startDate) return 1;
+                if (!b.startDate) return -1;
+                return a.startDate.localeCompare(b.startDate);
+            });
+
+            if (activeMasterTasks.length === 0) {
+                container.innerHTML = '<p class="text-slate-500 text-center py-10 text-sm">No hay tareas maestras pendientes para reorganizar.</p>';
+                return;
+            }
+
+            activeMasterTasks.forEach(t => {
+                const isRec = t.isRecurring ? `<span class="bg-purple-900/60 border border-purple-700 text-purple-300 text-[9px] font-bold px-2 py-0.5 rounded">Recurrente</span>` : '';
+                const scoreColor = t.score >= 10 ? 'text-red-400 bg-red-950/30 border-red-900/50' : (t.score >= 7 ? 'text-yellow-400 bg-yellow-950/30 border-yellow-900/50' : 'text-emerald-400 bg-emerald-950/30 border-emerald-900/50');
+                
+                container.innerHTML += `
+                <div class="bg-slate-900/90 p-3.5 rounded-xl border border-slate-700 hover:border-slate-600 transition flex items-center justify-between gap-4">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <input type="checkbox" data-pareto-id="${t.id}" ${t.isRecurring ? 'disabled' : ''} class="accent-amber-500 h-4 w-4 rounded border-slate-700 text-amber-600 focus:ring-amber-500 shrink-0 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed">
+                        <div class="min-w-0">
+                            <h4 class="font-bold text-slate-200 text-sm truncate">${t.title}</h4>
+                            <div class="text-[10px] text-slate-400 mt-1 flex flex-wrap gap-3 items-center">
+                                <span class="text-slate-500">📅 Programada: ${t.startDate || 'Sin fecha'}</span>
+                                <span class="border px-1.5 py-0.5 rounded text-[9px] font-semibold ${scoreColor}">Score: ${t.score}</span>
+                                ${t.duration ? `<span class="text-sky-400">⏳ ${t.duration}${t.durationUnit === 'h' ? 'h' : 'm'}</span>` : ''}
+                                ${isRec}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-right text-[10px] text-slate-500 hidden sm:block shrink-0">
+                        <div>Imp: ${t.i} | Urg: ${t.u}</div>
+                        <div>Esf: ${t.c}</div>
+                    </div>
+                </div>`;
+            });
+        }
+
+        function executeParetoReordering() {
+            const startReorderDateInput = document.getElementById('reorderStartDate').value;
+            if (!startReorderDateInput) { alert("Por favor seleccione una fecha base para iniciar la reorganización."); return; }
+
+            const checkedBoxes = document.querySelectorAll('input[data-pareto-id]:checked');
+            const selectedIds = Array.from(checkedBoxes).map(cb => parseInt(cb.getAttribute('data-pareto-id')));
+
+            if (selectedIds.length === 0) {
+                alert("Seleccione al menos una tarea prioritaria (Regla de Pareto) para reprogramar.");
+                return;
+            }
+
+            // Separar tareas seleccionadas y las no seleccionadas que NO sean recurrentes
+            let selectedTasks = [];
+            let unselectedNonRecurringTasks = [];
+
+            window.tasks.forEach(t => {
+                if (!t.completed && !t.isRecurring) {
+                    if (selectedIds.includes(t.id)) {
+                        selectedTasks.push(t);
+                    } else {
+                        unselectedNonRecurringTasks.push(t);
+                    }
+                }
+            });
+
+            // Algoritmo de ordenamiento científico dentro de cada grupo:
+            // 1. Mayor puntuación de prioridad (Score) descendente
+            // 2. Mayor nivel de urgencia descendente
+            // 3. Mayor nivel de importancia descendente
+            // 4. Menor esfuerzo (c) ascendente (Shortest Processing Time First adaptado)
+            const scientificSort = (a, b) => {
+                if (b.score !== a.score) return b.score - a.score;
+                if (b.u !== a.u) return b.u - a.u;
+                if (b.i !== a.i) return b.i - a.i;
+                return a.c - b.c;
+            };
+
+            selectedTasks.sort(scientificSort);
+            unselectedNonRecurringTasks.sort(scientificSort);
+
+            // Concatenar: Primero las seleccionadas (Pareto 20% de esfuerzo -> 80% de impacto), luego el resto rezagado
+            const finalProcessingOrder = [...selectedTasks, ...unselectedNonRecurringTasks];
+
+            // Asignación secuencial de fechas basada en la duración y capacidad diaria simulada
+            let currentAllocationDate = new Date(startReorderDateInput + 'T00:00:00');
+            
+            finalProcessingOrder.forEach(task => {
+                let formattedISO = toLocalISO(currentAllocationDate);
+                
+                // Actualizar fechas en la estructura original de datos
+                recursiveAction(window.tasks, task.id, (list, idx) => {
+                    list[idx].startDate = formattedISO;
+                    list[idx].dueDate = formattedISO; // Sincronización preventiva de entrega
+                });
+
+                // Avanzar cronológicamente el puntero para la siguiente tarea secuencial
+                currentAllocationDate.setDate(currentAllocationDate.getDate() + 1);
+            });
+
+            saveAndRender();
+            toggleModal('paretoModal');
+            alert("La agenda ha sido optimizada exitosamente. Las tareas prioritarias se han posicionado al inicio del bloque temporal.");
         }
 
         renderKanban();
