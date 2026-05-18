@@ -236,7 +236,7 @@
         </div>
     </div>
 
-    <!-- NUEVO: Modal de Reorganización Automática (Pareto) -->
+    <!-- Modal de Reorganización Automática (Pareto) -->
     <div id="paretoModal" class="fixed inset-0 bg-black/80 hidden flex justify-center items-start z-[65] p-4 pt-10 backdrop-blur-sm">
         <div class="bg-slate-800 p-6 rounded-xl w-full max-w-4xl h-[85vh] flex flex-col border border-amber-500/30 shadow-2xl">
             <div class="flex justify-between items-center mb-2 border-b border-slate-700 pb-3 shrink-0">
@@ -835,7 +835,7 @@
             // Filtrar solo tareas maestras activas (no completadas)
             const activeMasterTasks = window.tasks.filter(t => !t.completed);
 
-            // Ordenar cronológicamente (las fechas más cercanas o rezagadas primero)
+            // Ordenar cronológicamente puro: se extraen las tareas únicas estructuradas por proximidad
             activeMasterTasks.sort((a, b) => {
                 if (!a.startDate) return 1;
                 if (!b.startDate) return -1;
@@ -848,20 +848,30 @@
             }
 
             activeMasterTasks.forEach(t => {
-                const isRec = t.isRecurring ? `<span class="bg-purple-900/60 border border-purple-700 text-purple-300 text-[9px] font-bold px-2 py-0.5 rounded">Recurrente</span>` : '';
+                // Validación científica de recurrencia: si es recurrente pero NO tiene fecha de entrega, es fija perpetua (inhabilitada)
+                const isUnmovableRecurring = t.isRecurring && (!t.dueDate || t.dueDate === "");
+                
+                let recBadge = '';
+                if (t.isRecurring) {
+                    recBadge = isUnmovableRecurring 
+                        ? `<span class="bg-purple-950 border border-purple-800 text-purple-400 text-[9px] font-bold px-2 py-0.5 rounded">Recurrente Fija</span>`
+                        : `<span class="bg-indigo-900 border border-indigo-600 text-indigo-300 text-[9px] font-bold px-2 py-0.5 rounded">Recurrente con Entrega</span>`;
+                }
+
                 const scoreColor = t.score >= 10 ? 'text-red-400 bg-red-950/30 border-red-900/50' : (t.score >= 7 ? 'text-yellow-400 bg-yellow-950/30 border-yellow-900/50' : 'text-emerald-400 bg-emerald-950/30 border-emerald-900/50');
                 
                 container.innerHTML += `
                 <div class="bg-slate-900/90 p-3.5 rounded-xl border border-slate-700 hover:border-slate-600 transition flex items-center justify-between gap-4">
                     <div class="flex items-center gap-3 min-w-0">
-                        <input type="checkbox" data-pareto-id="${t.id}" ${t.isRecurring ? 'disabled' : ''} class="accent-amber-500 h-4 w-4 rounded border-slate-700 text-amber-600 focus:ring-amber-500 shrink-0 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed">
+                        <input type="checkbox" data-pareto-id="${t.id}" ${isUnmovableRecurring ? 'disabled' : ''} class="accent-amber-500 h-4 w-4 rounded border-slate-700 text-amber-600 focus:ring-amber-500 shrink-0 cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed">
                         <div class="min-w-0">
                             <h4 class="font-bold text-slate-200 text-sm truncate">${t.title}</h4>
                             <div class="text-[10px] text-slate-400 mt-1 flex flex-wrap gap-3 items-center">
-                                <span class="text-slate-500">📅 Programada: ${t.startDate || 'Sin fecha'}</span>
+                                <span class="text-slate-500">📅 Inicio: ${t.startDate || 'Sin fecha'}</span>
+                                <span class="text-red-400 font-semibold">${t.dueDate ? `🏁 Entrega: ${t.dueDate}` : '🏁 Sin Entrega'}</span>
                                 <span class="border px-1.5 py-0.5 rounded text-[9px] font-semibold ${scoreColor}">Score: ${t.score}</span>
                                 ${t.duration ? `<span class="text-sky-400">⏳ ${t.duration}${t.durationUnit === 'h' ? 'h' : 'm'}</span>` : ''}
-                                ${isRec}
+                                ${recBadge}
                             </div>
                         </div>
                     </div>
@@ -885,57 +895,69 @@
                 return;
             }
 
-            // Separar tareas seleccionadas y las no seleccionadas que NO sean recurrentes
             let selectedTasks = [];
-            let unselectedNonRecurringTasks = [];
+            let unselectedReorganizableTasks = [];
 
             window.tasks.forEach(t => {
-                if (!t.completed && !t.isRecurring) {
-                    if (selectedIds.includes(t.id)) {
-                        selectedTasks.push(t);
-                    } else {
-                        unselectedNonRecurringTasks.push(t);
+                if (!t.completed) {
+                    // Condición científica: Se omiten las recurrentes fijas que no tienen fecha de entrega
+                    const isUnmovableRecurring = t.isRecurring && (!t.dueDate || t.dueDate === "");
+                    if (!isUnmovableRecurring) {
+                        if (selectedIds.includes(t.id)) {
+                            selectedTasks.push(t);
+                        } else {
+                            unselectedReorganizableTasks.push(t);
+                        }
                     }
                 }
             });
 
-            // Algoritmo de ordenamiento científico dentro de cada grupo:
+            // Algoritmo de priorización científica (Matriz multidimensional + Criterio de Fecha de Entrega):
             // 1. Mayor puntuación de prioridad (Score) descendente
             // 2. Mayor nivel de urgencia descendente
             // 3. Mayor nivel de importancia descendente
-            // 4. Menor esfuerzo (c) ascendente (Shortest Processing Time First adaptado)
+            // 4. Proximidad de Fecha de Entrega (EDF) ascendente
+            // 5. Menor esfuerzo (c) ascendente
             const scientificSort = (a, b) => {
                 if (b.score !== a.score) return b.score - a.score;
                 if (b.u !== a.u) return b.u - a.u;
                 if (b.i !== a.i) return b.i - a.i;
+                
+                // Criterio de fecha de entrega
+                if (a.dueDate && b.dueDate) {
+                    if (a.dueDate !== b.dueDate) return a.dueDate.localeCompare(b.dueDate);
+                } else if (a.dueDate && !b.dueDate) return -1;
+                else if (!a.dueDate && b.dueDate) return 1;
+
                 return a.c - b.c;
             };
 
             selectedTasks.sort(scientificSort);
-            unselectedNonRecurringTasks.sort(scientificSort);
+            unselectedReorganizableTasks.sort(scientificSort);
 
-            // Concatenar: Primero las seleccionadas (Pareto 20% de esfuerzo -> 80% de impacto), luego el resto rezagado
-            const finalProcessingOrder = [...selectedTasks, ...unselectedNonRecurringTasks];
+            // Combinación bajo la distribución de Pareto (Grupo selecto procesado al inicio del bloque de tiempo)
+            const finalProcessingOrder = [...selectedTasks, ...unselectedReorganizableTasks];
 
-            // Asignación secuencial de fechas basada en la duración y capacidad diaria simulada
             let currentAllocationDate = new Date(startReorderDateInput + 'T00:00:00');
             
             finalProcessingOrder.forEach(task => {
                 let formattedISO = toLocalISO(currentAllocationDate);
                 
-                // Actualizar fechas en la estructura original de datos
                 recursiveAction(window.tasks, task.id, (list, idx) => {
                     list[idx].startDate = formattedISO;
-                    list[idx].dueDate = formattedISO; // Sincronización preventiva de entrega
+                    // Si la tarea tenía fecha de entrega previa, se ajusta secuencialmente para no quedar rezagada del inicio
+                    if (list[idx].dueDate && list[idx].dueDate < formattedISO) {
+                        list[idx].dueDate = formattedISO; 
+                    }
                 });
 
-                // Avanzar cronológicamente el puntero para la siguiente tarea secuencial
+                // Avance cronológico de asignación por unidad de recurso diario
                 currentAllocationDate.setDate(currentAllocationDate.getDate() + 1);
             });
 
             saveAndRender();
             toggleModal('paretoModal');
-            alert("La agenda ha sido optimizada exitosamente. Las tareas prioritarias se han posicionado al inicio del bloque temporal.");
+            alert("Agenda optimizada con éxito. Se consolidó la prioridad en base al Score y la Fecha de Entrega.");
         }
 
         renderKanban();
