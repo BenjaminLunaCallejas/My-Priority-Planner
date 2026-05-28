@@ -468,7 +468,7 @@
             };
         }
 
-        function createDeepTaskHTML(t, parentId = null, currentDate = null) {
+function createDeepTaskHTML(t, parentId = null, currentDate = null) {
             const hasSubtasks = t.subtasks && t.subtasks.length > 0;
             const isExpanded = !currentView.includes('month') && expandedTasks.has(t.id);
             const colorClass = t.score >= 10 ? 'border-l-red-500' : (t.score >= 7 ? 'border-l-yellow-500' : 'border-l-emerald-500');
@@ -479,7 +479,7 @@
                 <div id="task-${t.id}" ${dragAttrs} class="task-card bg-slate-900 p-2 rounded border-l-4 ${colorClass} shadow-lg mb-2">
                     <div class="flex justify-between items-start gap-1">
                         <div class="cursor-pointer overflow-hidden flex-grow" onclick="toggleTaskExpansion(${t.id})">
-                            <p class="text-[11px] font-bold text-slate-100 break-words whitespace-normal cursor-text select-text" onmousedown="this.closest('.task-card').setAttribute('draggable', false)" onmouseup="this.closest('.task-card').setAttribute('draggable', true)" onmouseleave="this.closest('.task-card').setAttribute('draggable', true)">${hasSubtasks && currentView !== 'month' ? (isExpanded ? '▼ ' : '▶ ') : ''}${t.title}</p>
+                            <p class="text-[11px] font-bold text-slate-100 break-words whitespace-normal cursor-text select-text" onclick="event.stopPropagation()" onmousedown="this.closest('.task-card').setAttribute('draggable', false)" onmouseup="this.closest('.task-card').setAttribute('draggable', true)" onmouseleave="this.closest('.task-card').setAttribute('draggable', true)">${hasSubtasks && currentView !== 'month' ? (isExpanded ? '▼ ' : '▶ ') : ''}${t.title}</p>
                             <div class="flex gap-2 items-center">
                                 ${t.time && currentView !== 'month' ? `<span class="text-[9px] text-sky-400">🕒 ${t.time}</span>` : ''}
                                 ${t.duration ? `<span class="text-[9px] text-slate-500">⏳ ${t.duration}${t.durationUnit === 'h' ? 'h' : 'm'}</span>` : ''}
@@ -493,7 +493,7 @@
                         </div>
                     </div>
                     ${isExpanded ? `
-                        <textarea oninput="updateNote(${t.id}, this.value)" class="notes-area w-full bg-slate-950/50 p-1.5 mt-2 rounded border border-slate-800 text-slate-400 outline-none min-h-[60px] h-fit resize-y" onmouseover="this.closest('.task-card')?.setAttribute('draggable', false)" onmouseout="this.closest('.task-card')?.setAttribute('draggable', true)">${t.notes || ""}</textarea>
+                        <textarea onclick="event.stopPropagation()" oninput="updateNote(${t.id}, this.value)" class="notes-area w-full bg-slate-950/50 p-1.5 mt-2 rounded border border-slate-800 text-slate-400 outline-none min-h-[60px] h-fit resize-y cursor-text select-text" onmousedown="this.closest('.task-card')?.setAttribute('draggable', false)" onmouseup="this.closest('.task-card')?.setAttribute('draggable', true)" onmouseleave="this.closest('.task-card')?.setAttribute('draggable', true)">${t.notes || ""}</textarea>
                         ${hasSubtasks ? `
                             <div class="subtask-container">
                                 ${t.subtasks.filter(s => {
