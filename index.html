@@ -17,6 +17,10 @@
         ::-webkit-scrollbar-thumb { background: #475569; border-radius: 8px; border: 2px solid #1e293b;}
         ::-webkit-scrollbar-thumb:hover { background: #64748b; }
 
+        /* Ocultar barra de scroll en el menú superior pero permitir deslizar */
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
         .view-week #kanbanBoard { overflow-x: auto !important; padding-bottom: 15px; }
         .view-month #kanbanBoard { overflow-y: auto !important; max-height: 100%; }
         .view-day #kanbanBoard { overflow-y: auto !important; display: flex; justify-content: center; }
@@ -37,45 +41,35 @@
         /* Estilo visual para la zona de soltado */
         .drag-over { background-color: rgba(56, 189, 248, 0.1) !important; border: 2px dashed #38bdf8 !important; }
         .highlight-task { border: 2px solid #38bdf8 !important; box-shadow: 0 0 15px rgba(56, 189, 248, 0.5); }
+        
         /* =========================================================
            PARCHE RESPONSIVO PARA MÓVILES (PLANNER PRO)
         ========================================================= */
         @media (max-width: 1024px) {
-            /* 1. VISTA MES: Pasar de 7 columnas a 1 sola columna hacia abajo */
             .calendar-grid {
                 grid-template-columns: 1fr !important;
                 gap: 12px !important;
-                padding-bottom: 4rem; /* Espacio extra al final para deslizar */
+                padding-bottom: 4rem; 
             }
-
-            /* 2. VISTA SEMANA: Apilar las columnas en lugar de ponerlas lado a lado */
             .view-week #kanbanBoard > div {
                 flex-direction: column !important;
                 display: flex !important;
                 gap: 12px !important;
             }
-            
-            /* Ajuste de cada columna de día individual en la semana */
             .view-week #kanbanBoard > div > div {
                 width: 100% !important;
                 min-width: 100% !important;
                 margin-bottom: 0.5rem;
-                height: auto !important; /* Para que la tarjeta crezca según su contenido */
+                height: auto !important; 
             }
-
-            /* 3. Evitar scroll horizontal roto y permitir scroll natural hacia abajo */
             .view-week #kanbanBoard, .view-month #kanbanBoard {
                 overflow-x: hidden !important;
                 overflow-y: auto !important;
             }
-
-            /* 4. Prevenir el molesto zoom automático de iOS/Android al tocar inputs */
             input, select, textarea {
                 font-size: 16px !important;
             }
-            
-            /* 5. Ajustar el padding interno de los modales grandes para que quepan en celular */
-            #listModal > div, #paretoModal > div {
+            #listModal > div, #paretoModal > div, #taskModal > div {
                 padding: 1.25rem !important;
                 height: 90vh !important;
                 max-height: 90vh !important;
@@ -83,7 +77,7 @@
         }
     </style>
 </head>
-<body class="p-4 md:p-6 h-screen flex flex-col view-week">
+<body class="p-4 md:p-6 h-screen flex flex-col view-day">
 
     <div id="authOverlay" class="fixed inset-0 flex flex-col justify-center items-center">
         <div class="bg-slate-800 p-8 rounded-2xl border border-slate-700 shadow-2xl text-center max-w-sm w-full mx-4">
@@ -97,97 +91,103 @@
     </div>
 
     <div class="max-w-[1600px] mx-auto w-full flex-grow flex flex-col overflow-hidden">
-        <header class="mb-4 flex flex-col md:flex-row justify-between items-center border-b border-slate-700 pb-4 shrink-0">
-            <div>
+        <header class="mb-4 flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-700 pb-4 shrink-0 gap-4 md:gap-0">
+            <div class="shrink-0">
                 <h1 class="text-2xl font-bold text-sky-400">Task Prioritizer Pro</h1>
                 <p class="text-slate-400 text-xs mt-1">Gestión Científica de Proyectos</p>
             </div>
-            <div class="flex items-center gap-4 mt-2 md:mt-0">
-                <div class="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
-                    <button onclick="changeView('day')" id="btnViewDay" class="px-3 py-1 rounded-md text-xs transition">Día</button>
-                    <button onclick="changeView('week')" id="btnViewWeek" class="px-3 py-1 rounded-md text-xs bg-sky-600 text-white transition">Semana</button>
+            
+            <div class="flex items-center gap-3 w-full md:w-auto overflow-x-auto scrollbar-hide pb-2 md:pb-0 flex-nowrap">
+                <button onclick="openTaskModal()" class="shrink-0 text-xs bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg text-white font-bold transition flex items-center shadow-lg">
+                    + Nueva Tarea
+                </button>
+                <div class="flex bg-slate-800 rounded-lg p-1 border border-slate-700 shrink-0">
+                    <button onclick="changeView('day')" id="btnViewDay" class="px-3 py-1 rounded-md text-xs bg-sky-600 text-white transition">Día</button>
+                    <button onclick="changeView('week')" id="btnViewWeek" class="px-3 py-1 rounded-md text-xs transition">Semana</button>
                     <button onclick="changeView('month')" id="btnViewMonth" class="px-3 py-1 rounded-md text-xs transition">Mes</button>
                 </div>
-                <button onclick="openParetoModal()" class="text-xs bg-amber-600 hover:bg-amber-500 px-4 py-2 rounded-lg text-white font-bold transition flex items-center gap-1 shadow-lg">🎯 Reorganizar Agenda</button>
-                <button onclick="openListView()" class="text-xs bg-sky-600 hover:bg-sky-500 px-4 py-2 rounded-lg text-white font-bold transition flex items-center gap-1 shadow-lg">🔍 Buscar / Lista</button>
-                <button onclick="toggleModal('completedModal')" class="text-xs bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-lg text-slate-200">Historial</button>
-                <div id="userProfile" class="hidden flex items-center gap-2">
+                <button onclick="openParetoModal()" class="shrink-0 text-xs bg-amber-600 hover:bg-amber-500 px-4 py-2 rounded-lg text-white font-bold transition flex items-center gap-1 shadow-lg">🎯 Reorganizar</button>
+                <button onclick="openListView()" class="shrink-0 text-xs bg-sky-600 hover:bg-sky-500 px-4 py-2 rounded-lg text-white font-bold transition flex items-center gap-1 shadow-lg">🔍 Buscar</button>
+                <button onclick="toggleModal('completedModal')" class="shrink-0 text-xs bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-lg text-slate-200">Historial</button>
+                <div id="userProfile" class="hidden flex items-center gap-2 shrink-0 border-l border-slate-700 pl-3">
                     <img id="userAvatar" src="" class="w-7 h-7 rounded-full border border-slate-600">
                     <button id="btnLogout" class="text-[10px] text-sky-400 hover:underline">Salir</button>
                 </div>
             </div>
         </header>
 
-        <div class="flex flex-col lg:flex-row gap-6 flex-grow overflow-hidden">
-            <aside class="w-full lg:w-80 bg-slate-800 p-5 rounded-xl shadow-xl overflow-y-auto border border-slate-700 shrink-0">
-                <h2 id="formTitle" class="text-md font-semibold mb-4 text-white border-l-4 border-sky-500 pl-2">Nueva Tarea Maestra</h2>
-                <div id="mainForm" class="space-y-3">
-                    <input type="hidden" id="editTaskId">
-                    <input type="text" id="taskTitle" placeholder="Nombre de la tarea..." class="w-full p-2.5 rounded-lg bg-slate-900 border border-slate-700 text-sm text-white outline-none focus:border-sky-500">
-                    <textarea id="taskNotes" placeholder="Notas o enlaces..." class="w-full p-2.5 h-16 rounded-lg bg-slate-900 border border-slate-700 text-xs text-slate-300 resize-none outline-none focus:border-sky-500"></textarea>
+        <div class="flex-grow flex flex-col min-w-0 overflow-hidden">
+            <div class="flex justify-between items-center mb-3 bg-slate-800 p-2 rounded-lg border border-slate-700 shrink-0">
+                <button onclick="navigateTime(-1)" class="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 rounded text-xs font-bold text-white">← Anterior</button>
+                <h3 id="weekLabel" class="text-white font-bold text-xs tracking-wider text-center"></h3>
+                <button onclick="navigateTime(1)" class="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 rounded text-xs font-bold text-white">Siguiente →</button>
+            </div>
+            <main class="flex-grow overflow-y-auto bg-slate-900/30 rounded-xl border border-slate-800 p-2" id="kanbanBoard"></main>
+        </div>
+    </div>
 
-                    <div class="grid grid-cols-3 gap-1.5 text-[10px]">
-                        <select id="imp" class="p-1.5 rounded bg-slate-900 border border-slate-700 text-white"><option value="3">Muy Importante</option><option value="2">Importancia Media</option><option value="1">Poco Importante</option></select>
-                        <select id="urg" class="p-1.5 rounded bg-slate-900 border border-slate-700 text-white"><option value="3">Muy Urgente</option><option value="2">Pronta</option><option value="1">Poco Urgente</option></select>
-                        <select id="comp" class="p-1.5 rounded bg-slate-900 border border-slate-700 text-white"><option value="1">Esfuerzo Bajo</option><option value="2">Esfuerzo Medio</option><option value="3">Esfuerzo Alto</option></select>
-                    </div>
+    <div id="taskModal" class="fixed inset-0 bg-black/80 hidden flex justify-center items-center z-[75] p-4 backdrop-blur-sm">
+        <div class="bg-slate-800 p-6 rounded-xl shadow-2xl w-full max-w-md border border-sky-500/30 max-h-[95vh] overflow-y-auto scrollbar-thin">
+            <div class="flex justify-between items-center mb-4">
+                <h2 id="formTitle" class="text-md font-semibold text-white border-l-4 border-sky-500 pl-2">Nueva Tarea Maestra</h2>
+                <button onclick="toggleModal('taskModal')" class="text-slate-400 hover:text-white text-3xl leading-none">&times;</button>
+            </div>
+            <div id="mainForm" class="space-y-3">
+                <input type="hidden" id="editTaskId">
+                <input type="text" id="taskTitle" placeholder="Nombre de la tarea..." class="w-full p-2.5 rounded-lg bg-slate-900 border border-slate-700 text-sm text-white outline-none focus:border-sky-500">
+                <textarea id="taskNotes" placeholder="Notas o enlaces..." class="w-full p-2.5 h-16 rounded-lg bg-slate-900 border border-slate-700 text-xs text-slate-300 resize-none outline-none focus:border-sky-500"></textarea>
 
-                    <div class="grid grid-cols-2 gap-2 p-2 bg-slate-900/50 rounded border border-slate-700">
-                        <div class="flex flex-col">
-                            <label class="text-[9px] text-sky-400 font-bold uppercase">Fecha de Inicio</label>
-                            <input type="date" id="taskStartDate" class="bg-transparent text-white text-[10px] outline-none" style="color-scheme: dark;">
-                        </div>
-                        <div class="flex flex-col">
-                            <label class="text-[9px] text-red-400 font-bold uppercase">Fecha de Entrega</label>
-                            <input type="date" id="taskDueDate" class="bg-transparent text-white text-[10px] outline-none" style="color-scheme: dark;">
-                        </div>
-                    </div>
-
-                    <div id="daysSelector" class="grid grid-cols-4 gap-1 text-[9px]">
-                        <label class="flex items-center space-x-1"><input type="checkbox" value="Lunes" checked> <span>Lu</span></label>
-                        <label class="flex items-center space-x-1"><input type="checkbox" value="Martes"> <span>Ma</span></label>
-                        <label class="flex items-center space-x-1"><input type="checkbox" value="Miércoles"> <span>Mi</span></label>
-                        <label class="flex items-center space-x-1"><input type="checkbox" value="Jueves"> <span>Ju</span></label>
-                        <label class="flex items-center space-x-1"><input type="checkbox" value="Viernes"> <span>Vi</span></label>
-                        <label class="flex items-center space-x-1"><input type="checkbox" value="Sábado"> <span>Sá</span></label>
-                        <label class="flex items-center space-x-1"><input type="checkbox" value="Domingo"> <span>Do</span></label>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-2">
-                        <input type="time" id="taskTime" class="p-1.5 rounded bg-slate-900 border border-slate-700 text-white text-[10px]" style="color-scheme: dark;">
-                        <div class="flex gap-1">
-                            <input type="number" id="taskDuration" placeholder="Duración" class="w-full p-1.5 rounded bg-slate-900 border border-slate-700 text-white text-[10px] outline-none">
-                            <select id="taskDurationUnit" class="p-1.5 rounded bg-slate-900 border border-slate-700 text-white text-[10px] outline-none">
-                                <option value="min">min</option>
-                                <option value="h">h</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="flex items-center gap-2">
-                        <label class="flex items-center space-x-1 text-[10px] cursor-pointer">
-                            <input type="checkbox" id="isRecurring" class="accent-sky-500">
-                            <span>Recurrente</span>
-                        </label>
-                    </div>
-
-                    <button id="btnSubmitTask" onclick="handleAddTask()" class="w-full bg-sky-600 hover:bg-sky-500 text-white font-bold py-2.5 rounded-lg transition text-sm">Crear Tarea</button>
-                    <button id="btnCancelEdit" onclick="clearForm('mainForm')" class="w-full bg-slate-700 text-white py-1 rounded hidden text-xs">Cancelar Edición</button>
+                <div class="grid grid-cols-3 gap-1.5 text-[10px]">
+                    <select id="imp" class="p-1.5 rounded bg-slate-900 border border-slate-700 text-white"><option value="3">Muy Importante</option><option value="2">Importancia Media</option><option value="1">Poco Importante</option></select>
+                    <select id="urg" class="p-1.5 rounded bg-slate-900 border border-slate-700 text-white"><option value="3">Muy Urgente</option><option value="2">Pronta</option><option value="1">Poco Urgente</option></select>
+                    <select id="comp" class="p-1.5 rounded bg-slate-900 border border-slate-700 text-white"><option value="1">Esfuerzo Bajo</option><option value="2">Esfuerzo Medio</option><option value="3">Esfuerzo Alto</option></select>
                 </div>
-            </aside>
 
-            <div class="flex-grow flex flex-col min-w-0">
-                <div class="flex justify-between items-center mb-3 bg-slate-800 p-2 rounded-lg border border-slate-700 shrink-0">
-                    <button onclick="navigateTime(-1)" class="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded text-xs">←</button>
-                    <h3 id="weekLabel" class="text-white font-bold text-xs tracking-wider"></h3>
-                    <button onclick="navigateTime(1)" class="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded text-xs">→</button>
+                <div class="grid grid-cols-2 gap-2 p-2 bg-slate-900/50 rounded border border-slate-700">
+                    <div class="flex flex-col">
+                        <label class="text-[9px] text-sky-400 font-bold uppercase">Fecha de Inicio</label>
+                        <input type="date" id="taskStartDate" class="bg-transparent text-white text-[10px] outline-none" style="color-scheme: dark;">
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-[9px] text-red-400 font-bold uppercase">Fecha de Entrega</label>
+                        <input type="date" id="taskDueDate" class="bg-transparent text-white text-[10px] outline-none" style="color-scheme: dark;">
+                    </div>
                 </div>
-                <main class="flex-grow overflow-y-auto bg-slate-900/30 rounded-xl border border-slate-800 p-2" id="kanbanBoard"></main>
+
+                <div id="daysSelector" class="grid grid-cols-4 gap-1 text-[9px]">
+                    <label class="flex items-center space-x-1"><input type="checkbox" value="Lunes" checked> <span>Lu</span></label>
+                    <label class="flex items-center space-x-1"><input type="checkbox" value="Martes"> <span>Ma</span></label>
+                    <label class="flex items-center space-x-1"><input type="checkbox" value="Miércoles"> <span>Mi</span></label>
+                    <label class="flex items-center space-x-1"><input type="checkbox" value="Jueves"> <span>Ju</span></label>
+                    <label class="flex items-center space-x-1"><input type="checkbox" value="Viernes"> <span>Vi</span></label>
+                    <label class="flex items-center space-x-1"><input type="checkbox" value="Sábado"> <span>Sá</span></label>
+                    <label class="flex items-center space-x-1"><input type="checkbox" value="Domingo"> <span>Do</span></label>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="time" id="taskTime" class="p-1.5 rounded bg-slate-900 border border-slate-700 text-white text-[10px]" style="color-scheme: dark;">
+                    <div class="flex gap-1">
+                        <input type="number" id="taskDuration" placeholder="Duración" class="w-full p-1.5 rounded bg-slate-900 border border-slate-700 text-white text-[10px] outline-none">
+                        <select id="taskDurationUnit" class="p-1.5 rounded bg-slate-900 border border-slate-700 text-white text-[10px] outline-none">
+                            <option value="min">min</option>
+                            <option value="h">h</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-2">
+                    <label class="flex items-center space-x-1 text-[10px] cursor-pointer">
+                        <input type="checkbox" id="isRecurring" class="accent-sky-500">
+                        <span>Recurrente</span>
+                    </label>
+                </div>
+
+                <button id="btnSubmitTask" onclick="handleAddTask()" class="w-full bg-sky-600 hover:bg-sky-500 text-white font-bold py-3 mt-2 rounded-lg transition text-sm">Crear Tarea</button>
+                <button id="btnCancelEdit" onclick="toggleModal('taskModal'); clearForm('mainForm')" class="w-full bg-slate-700 text-white py-2 rounded hidden text-xs">Cancelar</button>
             </div>
         </div>
     </div>
 
-    <!-- Modales -->
     <div id="subtaskModal" class="fixed inset-0 bg-black/80 hidden flex justify-center items-center z-[70] p-4 backdrop-blur-sm">
         <div class="bg-slate-800 p-6 rounded-xl w-full max-w-md border border-sky-500/30">
             <h2 id="subtaskModalTitle" class="text-lg font-bold text-sky-400 mb-4">Nueva Subtarea</h2>
@@ -248,7 +248,6 @@
         </div>
     </div>
 
-    <!-- Modal de Día Completo -->
     <div id="dayTasksOverlay" class="fixed inset-0 bg-black/90 hidden flex justify-center items-center z-[80] p-4 backdrop-blur-md">
         <div class="bg-slate-800 p-6 rounded-2xl w-full max-w-lg max-h-[85vh] flex flex-col border border-sky-500/40 shadow-2xl relative">
             <button onclick="toggleModal('dayTasksOverlay')" class="absolute top-4 right-4 text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
@@ -280,7 +279,6 @@
         </div>
     </div>
 
-    <!-- Modal de Reorganización Automática (Pareto) -->
     <div id="paretoModal" class="fixed inset-0 bg-black/80 hidden flex justify-center items-start z-[65] p-4 pt-10 backdrop-blur-sm">
         <div class="bg-slate-800 p-6 rounded-xl w-full max-w-4xl h-[85vh] flex flex-col border border-amber-500/30 shadow-2xl">
             <div class="flex justify-between items-center mb-2 border-b border-slate-700 pb-3 shrink-0">
@@ -307,7 +305,7 @@
         window.tasks = JSON.parse(localStorage.getItem('priorityTasksPro')) || [];
         let expandedTasks = new Set();
         let listExpandedTasks = new Set();
-        let currentView = 'week'; 
+        let currentView = 'day'; // <--- AHORA EL DEFAULT ES DÍA
         let baseDate = new Date(); 
 
         const toLocalISO = (date) => {
@@ -374,7 +372,6 @@
             });
             saveAndRender();
         }
-        // --- FIN DRAG & DROP ---
 
         function changeView(view) {
             currentView = view;
@@ -391,6 +388,11 @@
             else if (currentView === 'week') baseDate.setDate(baseDate.getDate() + (direction * 7));
             else if (currentView === 'month') baseDate.setMonth(baseDate.getMonth() + direction);
             renderKanban();
+        }
+
+        function openTaskModal() {
+            clearForm('mainForm');
+            toggleModal('taskModal');
         }
 
         function openEditTask(id) {
@@ -416,6 +418,8 @@
                 document.getElementById('formTitle').innerText = "Editando Tarea";
                 document.getElementById('btnSubmitTask').innerText = "Actualizar Tarea";
                 document.getElementById('btnCancelEdit').classList.remove('hidden');
+
+                toggleModal('taskModal');
             });
         }
 
@@ -435,6 +439,7 @@
             }
             saveAndRender();
             clearForm('mainForm');
+            toggleModal('taskModal');
         }
 
         function handleAddSubtask() {
@@ -652,8 +657,8 @@
                     tasksHtml = dayTasks.map(t => createDeepTaskHTML(t, null, colISO)).join('');
                 }
 
-let colHtml = `
-                    <div ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, '${colISO}')" class="${currentView === 'month' ? 'min-h-[140px]' : 'min-w-[280px] w-[280px] h-full'} bg-slate-800/60 rounded-xl border ${colISO === todayISO ? 'border-sky-500 bg-slate-800' : 'border-slate-700'} flex flex-col ${!isCurrentMonth && currentView === 'month' ? 'opacity-20 hidden lg:flex' : ''} transition-colors">
+                let colHtml = `
+                    <div ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, '${colISO}')" class="${currentView === 'month' ? 'min-h-[140px]' : 'min-w-[280px] w-full lg:w-[280px] h-full'} bg-slate-800/60 rounded-xl border ${colISO === todayISO ? 'border-sky-500 bg-slate-800' : 'border-slate-700'} flex flex-col ${!isCurrentMonth && currentView === 'month' ? 'opacity-20 hidden lg:flex' : ''} transition-colors">
                         <div class="p-2 border-b border-slate-700 flex justify-between items-center shrink-0">
                             <span class="text-[11px] lg:text-[10px] font-bold ${colISO === todayISO ? 'text-sky-400' : 'text-slate-400'}">
                                 <span class="hidden lg:inline">${dayName.substring(0,2)}</span>
@@ -966,11 +971,6 @@ let colHtml = `
             });
 
             // Algoritmo de priorización científica (Matriz multidimensional + Criterio de Fecha de Entrega):
-            // 1. Mayor puntuación de prioridad (Score) descendente
-            // 2. Mayor nivel de urgencia descendente
-            // 3. Mayor nivel de importancia descendente
-            // 4. Proximidad de Fecha de Entrega (EDF) ascendente
-            // 5. Menor esfuerzo (c) ascendente
             const scientificSort = (a, b) => {
                 if (b.score !== a.score) return b.score - a.score;
                 if (b.u !== a.u) return b.u - a.u;
@@ -988,7 +988,7 @@ let colHtml = `
             selectedTasks.sort(scientificSort);
             unselectedReorganizableTasks.sort(scientificSort);
 
-            // Combinación bajo la distribución de Pareto (Grupo selecto procesado al inicio del bloque de tiempo)
+            // Combinación bajo la distribución de Pareto
             const finalProcessingOrder = [...selectedTasks, ...unselectedReorganizableTasks];
 
             let currentAllocationDate = new Date(startReorderDateInput + 'T00:00:00');
@@ -998,13 +998,12 @@ let colHtml = `
                 
                 recursiveAction(window.tasks, task.id, (list, idx) => {
                     list[idx].startDate = formattedISO;
-                    // Si la tarea tenía fecha de entrega previa, se ajusta secuencialmente para no quedar rezagada del inicio
                     if (list[idx].dueDate && list[idx].dueDate < formattedISO) {
                         list[idx].dueDate = formattedISO; 
                     }
                 });
 
-                // Avance cronológico de asignación por unidad de recurso diario
+                // Avance cronológico de asignación
                 currentAllocationDate.setDate(currentAllocationDate.getDate() + 1);
             });
 
