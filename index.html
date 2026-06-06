@@ -555,11 +555,11 @@
                                 ${t.duration ? `<span class="text-[9px] text-slate-500">⏳ ${t.duration}${t.durationUnit === 'h' ? 'h' : 'm'}</span>` : ''}
                             </div>
                         </div>
-                        <div class="flex gap-1 shrink-0 z-10 relative">
-                            <button onclick="${parentId ? `openEditSubtask(${t.id}, ${parentId})` : `openEditTask(${t.id})`}" title="Editar" class="text-[10px] text-slate-500 hover:text-sky-400">✎</button>
-                            ${!parentId ? `<button onclick="openSubtaskModal(${t.id}, '${t.title}')" class="text-[10px] text-sky-500 hover:text-sky-300">+</button>` : ''}
-                            <button onclick="completeTask(${t.id}, ${currentDate ? `'${currentDate}'` : 'null'})" class="text-[10px] text-emerald-500 hover:text-emerald-300">✓</button>
-                            <button onclick="deleteTask(${t.id})" class="text-[10px] text-red-500 hover:text-red-300">×</button>
+<div class="flex gap-3 sm:gap-2 shrink-0 z-10 relative items-center bg-slate-950/40 p-1.5 rounded-lg border border-slate-800">
+                            <button onclick="${parentId ? `openEditSubtask(${t.id}, ${parentId})` : `openEditTask(${t.id})`}" title="Editar" class="text-sm px-1.5 text-slate-400 hover:text-sky-400 transition">✎</button>
+                            ${!parentId ? `<button onclick="openSubtaskModal(${t.id}, '${t.title}')" title="Añadir Subtarea" class="text-sm px-1.5 text-sky-500 hover:text-sky-300 transition">+</button>` : ''}
+                            <button onclick="completeTask(${t.id}, ${currentDate ? `'${currentDate}'` : 'null'}, false)" title="Completar" class="text-sm px-1.5 text-emerald-500 hover:text-emerald-300 transition">✓</button>
+                            <button onclick="deleteTask(${t.id})" title="Eliminar" class="text-sm px-1.5 text-red-500 hover:text-red-300 transition">×</button>
                         </div>
                     </div>
                     ${isExpanded ? `
@@ -773,7 +773,7 @@
                             <div><h5 class="font-bold text-slate-200 text-xs">${s.title}</h5></div>
                             <div class="flex gap-2 shrink-0">
                                 <button onclick="toggleModal('listModal'); openEditSubtask(${s.id}, ${t.id})" class="bg-slate-700 px-3 py-1.5 rounded-md text-[10px] text-white">✎</button>
-                                <button onclick="completeTask(${s.id}, '${todayISO}'); renderListView();" class="bg-emerald-600 px-3 py-1.5 rounded-md text-[10px] text-white">✓</button>
+                                <button onclick="completeTask(${s.id}, '${todayISO}', true); renderListView();" class="bg-emerald-600 px-3 py-1.5 rounded-md text-[10px] text-white">✓</button>
                             </div>
                         </div>`;
                     });
@@ -794,7 +794,7 @@
                         </div>
                         <div class="flex gap-2 shrink-0">
                             <button onclick="toggleModal('listModal'); ${isSub ? `openEditSubtask(${t.id}, ${t.parentId})` : `openEditTask(${t.id})`}" class="bg-slate-700 px-4 py-2 rounded-md text-xs text-white">Editar</button>
-                            <button onclick="completeTask(${t.id}, '${todayISO}'); renderListView();" class="bg-emerald-600 px-4 py-2 rounded-md text-xs text-white">Completar</button>
+                            <button onclick="completeTask(${t.id}, '${todayISO}', true); renderListView();" class="bg-emerald-600 px-4 py-2 rounded-md text-xs text-white">Completar</button>
                         </div>
                     </div>
                     ${subHtml}
@@ -836,16 +836,23 @@
             return false;
         }
 
-function completeTask(id, targetDate = null) {
+function completeTask(id, targetDate = null, fromSearch = false) {
             let requiresSave = false;
             recursiveAction(window.tasks, id, (list, idx) => {
                 if (list[idx].isRecurring) {
-                    const finishDefinitively = confirm(`La tarea "${list[idx].title}" tiene un patrón de recurrencia activo.\n\n¿Desea darla por terminada DEFINITIVAMENTE en el proyecto?\n\n[Aceptar] = Sí, concluir para siempre.\n[Cancelar] = No, solo registrarla como completada en esta fecha.`);
+                    let finishDefinitively = false;
+                    
+                    // SOLO muestra la alerta si la acción viene explícitamente del Buscador
+                    if (fromSearch) {
+                        finishDefinitively = confirm(`La tarea "${list[idx].title}" tiene un patrón de recurrencia activo.\n\n¿Desea darla por terminada DEFINITIVAMENTE en el proyecto?\n\n[Aceptar] = Sí, concluir para siempre.\n[Cancelar] = No, solo registrarla como completada en esta fecha.`);
+                    }
+                    
                     if (finishDefinitively) {
                         list[idx].completed = true;
                         list[idx].isRecurring = false; 
                         if (list[idx].subtasks) list[idx].subtasks.forEach(s => s.completed = true);
                     } else {
+                        // Comportamiento silencioso para tableros: Solo la completa en ese día específico
                         if (!list[idx].completedDates) list[idx].completedDates = [];
                         let dateToMark = targetDate || toLocalISO(new Date());
                         if (!list[idx].completedDates.includes(dateToMark)) {
@@ -853,6 +860,7 @@ function completeTask(id, targetDate = null) {
                         }
                     }
                 } else {
+                    // Si no es recurrente, se elimina definitivamente de la vista (pasa a completadas)
                     list[idx].completed = true;
                     if (list[idx].subtasks) list[idx].subtasks.forEach(s => s.completed = true);
                 }
