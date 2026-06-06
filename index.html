@@ -42,33 +42,51 @@
         .drag-over { background-color: rgba(56, 189, 248, 0.1) !important; border: 2px dashed #38bdf8 !important; }
         .highlight-task { border: 2px solid #38bdf8 !important; box-shadow: 0 0 15px rgba(56, 189, 248, 0.5); }
         
+/* =========================================================
+           ESCALADO TIPOGRÁFICO GLOBAL (PC Y MÓVIL)
+        ========================================================= */
+        html { font-size: 16px; }
+        .text-\[9px\] { font-size: 0.85rem !important; line-height: 1.2rem; }
+        .text-\[10px\] { font-size: 0.95rem !important; line-height: 1.3rem; }
+        .text-\[11px\] { font-size: 1.05rem !important; line-height: 1.4rem; }
+        .text-xs { font-size: 1.15rem !important; line-height: 1.5rem; }
+        .text-sm { font-size: 1.25rem !important; line-height: 1.6rem; }
+        
         /* =========================================================
            PARCHE RESPONSIVO PARA MÓVILES (PLANNER PRO)
         ========================================================= */
         @media (max-width: 1024px) {
+            html { font-size: 18px; } /* Letras aún más grandes en celular */
+            input, select, button, textarea { font-size: 1.1rem !important; }
+            
             .calendar-grid {
                 grid-template-columns: 1fr !important;
                 gap: 12px !important;
                 padding-bottom: 4rem; 
             }
+            
+            /* Arreglo Vista Semanal: Scroll Horizontal Activo */
+            .view-week #kanbanBoard {
+                flex-direction: row !important;
+                flex-wrap: nowrap !important;
+                overflow-x: auto !important;
+                overflow-y: hidden !important;
+                scroll-snap-type: x mandatory;
+                padding-bottom: 20px;
+            }
             .view-week #kanbanBoard > div {
-                flex-direction: column !important;
+                min-width: 85vw !important; /* Cada columna abarca casi toda la pantalla */
+                scroll-snap-align: center;
+                height: 100% !important;
                 display: flex !important;
-                gap: 12px !important;
+                flex-direction: column !important;
             }
-            .view-week #kanbanBoard > div > div {
-                width: 100% !important;
-                min-width: 100% !important;
-                margin-bottom: 0.5rem;
-                height: auto !important; 
-            }
-            .view-week #kanbanBoard, .view-month #kanbanBoard {
+            
+            .view-month #kanbanBoard {
                 overflow-x: hidden !important;
                 overflow-y: auto !important;
             }
-            input, select, textarea {
-                font-size: 16px !important;
-            }
+            
             #listModal > div, #paretoModal > div, #taskModal > div {
                 padding: 1.25rem !important;
                 height: 90vh !important;
@@ -275,7 +293,10 @@
         <div class="bg-slate-800 p-6 rounded-xl w-full max-w-xl max-h-[70vh] flex flex-col">
             <h2 class="text-lg font-bold text-emerald-400 mb-4 border-b border-slate-700 pb-2">Tareas Completadas</h2>
             <div id="completedList" class="overflow-y-auto space-y-2 flex-grow"></div>
-            <button onclick="toggleModal('completedModal')" class="mt-4 bg-slate-700 p-2 rounded text-xs">Cerrar</button>
+            <div class="mt-4 pt-4 border-t border-slate-700 flex gap-3">
+                <button onclick="clearHistory()" class="flex-1 bg-red-700 hover:bg-red-600 p-2.5 rounded-lg text-white font-bold transition text-sm shadow-md">🗑️ Vaciar Historial</button>
+                <button onclick="toggleModal('completedModal')" class="flex-1 bg-slate-700 hover:bg-slate-600 p-2.5 rounded-lg text-white transition text-sm">Cerrar</button>
+            </div>
         </div>
     </div>
 
@@ -657,8 +678,18 @@
                     tasksHtml = dayTasks.map(t => createDeepTaskHTML(t, null, colISO)).join('');
                 }
 
+// Ajuste estructural de la columna según la vista seleccionada
+                let columnWidthClass = '';
+                if (currentView === 'month') {
+                    columnWidthClass = 'min-h-[140px]';
+                } else if (currentView === 'day') {
+                    columnWidthClass = 'w-full max-w-3xl mx-auto h-full'; // Expande y centra en vista diaria
+                } else {
+                    columnWidthClass = 'min-w-[280px] w-full lg:w-[320px] shrink-0 h-full'; // Dimensiones estándar vista semanal
+                }
+
                 let colHtml = `
-                    <div ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, '${colISO}')" class="${currentView === 'month' ? 'min-h-[140px]' : 'min-w-[280px] w-full lg:w-[280px] h-full'} bg-slate-800/60 rounded-xl border ${colISO === todayISO ? 'border-sky-500 bg-slate-800' : 'border-slate-700'} flex flex-col ${!isCurrentMonth && currentView === 'month' ? 'opacity-20 hidden lg:flex' : ''} transition-colors">
+                    <div ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, '${colISO}')" class="${columnWidthClass} bg-slate-800/60 rounded-xl border ${colISO === todayISO ? 'border-sky-500 bg-slate-800' : 'border-slate-700'} flex flex-col ${!isCurrentMonth && currentView === 'month' ? 'opacity-20 hidden lg:flex' : ''} transition-colors">
                         <div class="p-2 border-b border-slate-700 flex justify-between items-center shrink-0">
                             <span class="text-[11px] lg:text-[10px] font-bold ${colISO === todayISO ? 'text-sky-400' : 'text-slate-400'}">
                                 <span class="hidden lg:inline">${dayName.substring(0,2)}</span>
@@ -807,16 +838,43 @@
             return false;
         }
 
-        function completeTask(id, targetDate = null) {
+function completeTask(id, targetDate = null) {
+            let requiresSave = false;
             recursiveAction(window.tasks, id, (list, idx) => {
-                if (list[idx].isRecurring && targetDate) {
-                    if (!list[idx].completedDates) list[idx].completedDates = [];
-                    if (!list[idx].completedDates.includes(targetDate)) list[idx].completedDates.push(targetDate);
+                if (list[idx].isRecurring) {
+                    const finishDefinitively = confirm(`La tarea "${list[idx].title}" tiene un patrón de recurrencia activo.\n\n¿Desea darla por terminada DEFINITIVAMENTE en el proyecto?\n\n[Aceptar] = Sí, concluir para siempre.\n[Cancelar] = No, solo registrarla como completada en esta fecha.`);
+                    if (finishDefinitively) {
+                        list[idx].completed = true;
+                        list[idx].isRecurring = false; 
+                        if (list[idx].subtasks) list[idx].subtasks.forEach(s => s.completed = true);
+                    } else {
+                        if (!list[idx].completedDates) list[idx].completedDates = [];
+                        let dateToMark = targetDate || toLocalISO(new Date());
+                        if (!list[idx].completedDates.includes(dateToMark)) {
+                            list[idx].completedDates.push(dateToMark);
+                        }
+                    }
                 } else {
                     list[idx].completed = true;
                     if (list[idx].subtasks) list[idx].subtasks.forEach(s => s.completed = true);
                 }
+                requiresSave = true;
             });
+            if (requiresSave) saveAndRender();
+        }
+
+        function clearHistory() {
+            if(!confirm("Advertencia: ¿Está seguro de purgar todas las tareas completadas? Esta acción optimizará la base de datos pero la eliminación es irreversible.")) return;
+            
+            const filterActiveTasks = (taskList) => {
+                return taskList.filter(t => !t.completed).map(t => {
+                    if (t.subtasks) t.subtasks = filterActiveTasks(t.subtasks);
+                    if (t.isRecurring) t.completedDates = []; // Depura el registro de días completados
+                    return t;
+                });
+            };
+            
+            window.tasks = filterActiveTasks(window.tasks);
             saveAndRender();
         }
 
