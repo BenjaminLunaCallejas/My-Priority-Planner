@@ -43,21 +43,19 @@
         .highlight-task { border: 2px solid #38bdf8 !important; box-shadow: 0 0 15px rgba(56, 189, 248, 0.5); }
         
 /* =========================================================
-           ESCALADO TIPOGRÁFICO GLOBAL (PC Y MÓVIL)
+           ESCALADO TIPOGRÁFICO ARMÓNICO (PC Y MÓVIL)
         ========================================================= */
-        html { font-size: 16px; }
-        .text-\[9px\] { font-size: 0.85rem !important; line-height: 1.2rem; }
-        .text-\[10px\] { font-size: 0.95rem !important; line-height: 1.3rem; }
-        .text-\[11px\] { font-size: 1.05rem !important; line-height: 1.4rem; }
-        .text-xs { font-size: 1.15rem !important; line-height: 1.5rem; }
-        .text-sm { font-size: 1.25rem !important; line-height: 1.6rem; }
+        html { font-size: 15px; } /* Base estándar, similar a interfaces de chat modernas */
         
+        /* Ajuste sutil solo para elementos de interacción */
+        input, select, button, textarea { font-size: 0.95rem; }
+
         /* =========================================================
            PARCHE RESPONSIVO PARA MÓVILES (PLANNER PRO)
         ========================================================= */
         @media (max-width: 1024px) {
-            html { font-size: 18px; } /* Letras aún más grandes en celular */
-            input, select, button, textarea { font-size: 1.1rem !important; }
+            html { font-size: 16px; } /* Ligeramente mayor en móvil para lectura táctil */
+            input, select, button, textarea { font-size: 1rem !important; }
             
             .calendar-grid {
                 grid-template-columns: 1fr !important;
@@ -75,7 +73,7 @@
                 padding-bottom: 20px;
             }
             .view-week #kanbanBoard > div {
-                min-width: 85vw !important; /* Cada columna abarca casi toda la pantalla */
+                min-width: 85vw !important; 
                 scroll-snap-align: center;
                 height: 100% !important;
                 display: flex !important;
