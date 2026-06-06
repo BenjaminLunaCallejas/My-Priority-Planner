@@ -142,8 +142,8 @@
         </div>
     </div>
 
-    <div id="taskModal" class="fixed inset-0 bg-black/80 hidden flex justify-center items-center z-[75] p-4 backdrop-blur-sm">
-        <div class="bg-slate-800 p-6 rounded-xl shadow-2xl w-full max-w-md border border-sky-500/30 max-h-[95vh] overflow-y-auto scrollbar-thin">
+<div id="taskModal" class="fixed inset-0 bg-black/80 lg:bg-black/40 hidden flex justify-center lg:justify-start items-center lg:items-stretch z-[75] p-4 lg:p-0 backdrop-blur-sm lg:backdrop-blur-none">
+        <div class="bg-slate-800 p-6 rounded-xl lg:rounded-none lg:rounded-r-2xl shadow-2xl w-full max-w-md border border-sky-500/30 lg:border-l-0 lg:border-y-0 lg:border-r max-h-[95vh] lg:max-h-screen overflow-y-auto scrollbar-thin lg:h-screen">
             <div class="flex justify-between items-center mb-4">
                 <h2 id="formTitle" class="text-md font-semibold text-white border-l-4 border-sky-500 pl-2">Nueva Tarea Maestra</h2>
                 <button onclick="toggleModal('taskModal')" class="text-slate-400 hover:text-white text-3xl leading-none">&times;</button>
@@ -204,8 +204,8 @@
         </div>
     </div>
 
-    <div id="subtaskModal" class="fixed inset-0 bg-black/80 hidden flex justify-center items-center z-[70] p-4 backdrop-blur-sm">
-        <div class="bg-slate-800 p-6 rounded-xl w-full max-w-md border border-sky-500/30">
+<div id="subtaskModal" class="fixed inset-0 bg-black/80 lg:bg-black/40 hidden flex justify-center lg:justify-start items-center lg:items-stretch z-[70] p-4 lg:p-0 backdrop-blur-sm lg:backdrop-blur-none">
+        <div class="bg-slate-800 p-6 rounded-xl lg:rounded-none lg:rounded-r-2xl shadow-2xl w-full max-w-md border border-sky-500/30 lg:border-l-0 lg:border-y-0 lg:border-r max-h-[95vh] lg:max-h-screen overflow-y-auto scrollbar-thin lg:h-screen">
             <h2 id="subtaskModalTitle" class="text-lg font-bold text-sky-400 mb-4">Nueva Subtarea</h2>
             <div id="subtaskForm" class="space-y-4">
                 <input type="hidden" id="parentTaskId">
