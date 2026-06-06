@@ -876,8 +876,11 @@ function completeTask(id, targetDate = null) {
             saveAndRender();
         }
 
-        function undoTask(id) {
-            recursiveAction(window.tasks, id, (list, idx) => { list[idx].completed = false; });
+function undoTask(id) {
+            recursiveAction(window.tasks, id, (list, idx) => { 
+                list[idx].completed = false; 
+                list[idx].canceled = false; // Se limpia la bandera de eliminación
+            });
             saveAndRender();
         }
 
@@ -889,7 +892,15 @@ function completeTask(id, targetDate = null) {
         }
 
         function deleteTask(id) {
-            recursiveAction(window.tasks, id, (list, idx) => list.splice(idx, 1));
+            // Implementación de Soft Delete: Cambia el estado en lugar de destruir el nodo
+            recursiveAction(window.tasks, id, (list, idx) => {
+                list[idx].completed = true;
+                list[idx].canceled = true; // Etiqueta para diferenciarla de las completadas con éxito
+                if (list[idx].subtasks) list[idx].subtasks.forEach(s => { 
+                    s.completed = true; 
+                    s.canceled = true; 
+                });
+            });
             saveAndRender();
         }
 
@@ -914,11 +925,15 @@ function completeTask(id, targetDate = null) {
                 });
                 return acc;
             };
-            getFlat(window.tasks).forEach(t => {
+getFlat(window.tasks).forEach(t => {
+                // Lógica de renderizado condicional para tareas eliminadas vs completadas
+                const titleClass = t.canceled ? 'text-red-500/70' : 'text-slate-500';
+                const prefix = t.canceled ? '🗑️ [Eliminada] ' : '✓ ';
+                
                 list.innerHTML += `
-                <div class="bg-slate-900/50 p-2 rounded border border-slate-700 flex justify-between items-center">
-                    <span class="text-xs line-through text-slate-500">${t.title}</span>
-                    <button onclick="${t.isRecurringInstance ? `undoRecurringTask(${t.id}, '${t.instanceDate}')` : `undoTask(${t.id})`}" class="text-sky-400 text-[12px]">↺</button>
+                <div class="bg-slate-900/50 p-2.5 rounded border ${t.canceled ? 'border-red-900/30' : 'border-slate-700'} flex justify-between items-center gap-3">
+                    <span class="text-xs line-through ${titleClass} break-words">${prefix}${t.title}</span>
+                    <button onclick="${t.isRecurringInstance ? `undoRecurringTask(${t.id}, '${t.instanceDate}')` : `undoTask(${t.id})`}" title="Restaurar a la agenda" class="text-sky-400 text-sm px-3 py-1.5 bg-slate-800 rounded hover:bg-slate-700 transition shrink-0 shadow-sm">↺</button>
                 </div>`;
             });
         }
