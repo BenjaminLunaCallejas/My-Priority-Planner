@@ -392,9 +392,11 @@
             saveAndRender();
         }
 
-        function changeView(view) {
+function changeView(view) {
             currentView = view;
-            document.body.className = `p-4 md:p-6 h-screen flex flex-col view-${view}`;
+            // AQUI ESTA LA MAGIA: Agregamos lg:flex-row y lg:gap-6 de vuelta a la plantilla de clases
+            document.body.className = `p-4 md:p-6 h-screen flex flex-col lg:flex-row view-${view} lg:gap-6`;
+            
             ['btnViewDay', 'btnViewWeek', 'btnViewMonth'].forEach(id => {
                 document.getElementById(id).classList.remove('bg-sky-600', 'text-white');
             });
