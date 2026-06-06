@@ -93,7 +93,7 @@
         }
     </style>
 </head>
-<body class="p-4 md:p-6 h-screen flex flex-col view-day">
+<body class="p-4 md:p-6 h-screen flex flex-col lg:flex-row view-day lg:gap-6">
 
     <div id="authOverlay" class="fixed inset-0 flex flex-col justify-center items-center">
         <div class="bg-slate-800 p-8 rounded-2xl border border-slate-700 shadow-2xl text-center max-w-sm w-full mx-4">
@@ -142,8 +142,8 @@
         </div>
     </div>
 
-<div id="taskModal" class="fixed inset-0 bg-black/80 lg:bg-black/40 hidden flex justify-center lg:justify-start items-center lg:items-stretch z-[75] p-4 lg:p-0 backdrop-blur-sm lg:backdrop-blur-none">
-        <div class="bg-slate-800 p-6 rounded-xl lg:rounded-none lg:rounded-r-2xl shadow-2xl w-full max-w-md border border-sky-500/30 lg:border-l-0 lg:border-y-0 lg:border-r max-h-[95vh] lg:max-h-screen overflow-y-auto scrollbar-thin lg:h-screen">
+<div id="taskModal" class="fixed lg:static inset-0 bg-black/80 lg:bg-transparent hidden flex justify-center items-center lg:items-stretch z-[75] p-4 lg:p-0 backdrop-blur-sm lg:backdrop-blur-none lg:order-first lg:w-[350px] xl:w-[400px] lg:shrink-0">
+        <div class="bg-slate-800 p-6 rounded-xl shadow-2xl w-full max-w-md border border-sky-500/30 max-h-[95vh] lg:max-h-full overflow-y-auto scrollbar-thin lg:h-full">
             <div class="flex justify-between items-center mb-4">
                 <h2 id="formTitle" class="text-md font-semibold text-white border-l-4 border-sky-500 pl-2">Nueva Tarea Maestra</h2>
                 <button onclick="toggleModal('taskModal')" class="text-slate-400 hover:text-white text-3xl leading-none">&times;</button>
@@ -204,8 +204,8 @@
         </div>
     </div>
 
-<div id="subtaskModal" class="fixed inset-0 bg-black/80 lg:bg-black/40 hidden flex justify-center lg:justify-start items-center lg:items-stretch z-[70] p-4 lg:p-0 backdrop-blur-sm lg:backdrop-blur-none">
-        <div class="bg-slate-800 p-6 rounded-xl lg:rounded-none lg:rounded-r-2xl shadow-2xl w-full max-w-md border border-sky-500/30 lg:border-l-0 lg:border-y-0 lg:border-r max-h-[95vh] lg:max-h-screen overflow-y-auto scrollbar-thin lg:h-screen">
+<div id="subtaskModal" class="fixed lg:static inset-0 bg-black/80 lg:bg-transparent hidden flex justify-center items-center lg:items-stretch z-[70] p-4 lg:p-0 backdrop-blur-sm lg:backdrop-blur-none lg:order-first lg:w-[350px] xl:w-[400px] lg:shrink-0">
+        <div class="bg-slate-800 p-6 rounded-xl shadow-2xl w-full max-w-md border border-sky-500/30 max-h-[95vh] lg:max-h-full overflow-y-auto scrollbar-thin lg:h-full">
             <h2 id="subtaskModalTitle" class="text-lg font-bold text-sky-400 mb-4">Nueva Subtarea</h2>
             <div id="subtaskForm" class="space-y-4">
                 <input type="hidden" id="parentTaskId">
