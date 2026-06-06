@@ -555,11 +555,11 @@
                                 ${t.duration ? `<span class="text-[9px] text-slate-500">⏳ ${t.duration}${t.durationUnit === 'h' ? 'h' : 'm'}</span>` : ''}
                             </div>
                         </div>
-<div class="flex gap-3 sm:gap-2 shrink-0 z-10 relative items-center bg-slate-950/40 p-1.5 rounded-lg border border-slate-800">
-                            <button onclick="${parentId ? `openEditSubtask(${t.id}, ${parentId})` : `openEditTask(${t.id})`}" title="Editar" class="text-sm px-1.5 text-slate-400 hover:text-sky-400 transition">✎</button>
-                            ${!parentId ? `<button onclick="openSubtaskModal(${t.id}, '${t.title}')" title="Añadir Subtarea" class="text-sm px-1.5 text-sky-500 hover:text-sky-300 transition">+</button>` : ''}
-                            <button onclick="completeTask(${t.id}, ${currentDate ? `'${currentDate}'` : 'null'}, false)" title="Completar" class="text-sm px-1.5 text-emerald-500 hover:text-emerald-300 transition">✓</button>
-                            <button onclick="deleteTask(${t.id})" title="Eliminar" class="text-sm px-1.5 text-red-500 hover:text-red-300 transition">×</button>
+                        <div class="flex gap-1 shrink-0 z-10 relative">
+                            <button onclick="${parentId ? `openEditSubtask(${t.id}, ${parentId})` : `openEditTask(${t.id})`}" title="Editar" class="text-[10px] text-slate-500 hover:text-sky-400">✎</button>
+                            ${!parentId ? `<button onclick="openSubtaskModal(${t.id}, '${t.title}')" class="text-[10px] text-sky-500 hover:text-sky-300">+</button>` : ''}
+                            <button onclick="completeTask(${t.id}, ${currentDate ? `'${currentDate}'` : 'null'})" class="text-[10px] text-emerald-500 hover:text-emerald-300">✓</button>
+                            <button onclick="deleteTask(${t.id})" class="text-[10px] text-red-500 hover:text-red-300">×</button>
                         </div>
                     </div>
                     ${isExpanded ? `
