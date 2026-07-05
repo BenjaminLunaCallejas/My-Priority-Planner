@@ -1123,27 +1123,28 @@ getFlat(window.tasks).forEach(t => {
         document.getElementById('btnLogout').onclick = () => signOut(auth).then(() => location.reload());
 
 onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                sessionUserId = user.uid;
-                document.getElementById('authOverlay').classList.add('hidden');
-                document.getElementById('userProfile').classList.remove('hidden');
-                document.getElementById('userAvatar').src = user.photoURL;
+    if (user) {
+        sessionUserId = user.uid;
+        document.getElementById('authOverlay').classList.add('hidden');
+        document.getElementById('userProfile').classList.remove('hidden');
+        document.getElementById('userAvatar').src = user.photoURL;
+        
+        // onSnapshot escucha la base de datos 24/7. Si la PC hace un cambio, 
+        // el celular se entera al instante y actualiza la pantalla solo.
+        onSnapshot(doc(db, "users", user.uid), (docSnap) => {
+            if (docSnap.exists() && docSnap.data().tasks) {
+                window.tasks = docSnap.data().tasks;
                 
-                const docSnap = await getDoc(doc(db, "users", user.uid));
-                if (docSnap.exists() && docSnap.data().tasks) {
-                    window.tasks = docSnap.data().tasks;
-                    
-                    // 🚀 SOLUCIÓN: Actualizamos la pantalla y memoria local, 
-                    // pero SIN disparar el evento que re-escribe en Firebase.
-                    localStorage.setItem('priorityTasksPro', JSON.stringify(window.tasks));
-                    renderKanban();
-                    renderCompleted();
-                    if(!document.getElementById('listModal').classList.contains('hidden')) {
-                        renderListView();
-                    }
+                localStorage.setItem('priorityTasksPro', JSON.stringify(window.tasks));
+                renderKanban();
+                renderCompleted();
+                if(!document.getElementById('listModal').classList.contains('hidden')) {
+                    renderListView();
                 }
             }
         });
+    }
+});
 
 window.addEventListener('tasksUpdated', async (e) => {
             if (sessionUserId) {
