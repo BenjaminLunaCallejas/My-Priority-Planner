@@ -1153,19 +1153,45 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 window.addEventListener('tasksUpdated', async (e) => {
-            if (sessionUserId) {
-                try {
-                    // 🛡️ EL ESCUDO: Esta línea purifica tu agenda y elimina cualquier 'undefined' escondido
-            const cleanTasks = JSON.parse(JSON.stringify(e.detail));
-                    console.log("Intentando sincronizar con Firebase... Peso del array:", JSON.stringify(e.detail).length, "bytes");
-                    await setDoc(doc(db, "users", sessionUserId), { tasks: e.detail, lastSync: new Date().toISOString() });
-                    console.log("✅ Sincronización exitosa");
-                } catch (error) {
-                    console.error("❌ ERROR CRÍTICO DE FIREBASE:", error.code, error.message);
-                    alert(`Error al guardar en la nube: ${error.message}\nRevisa la consola (F12) para más detalles.`);
+    if (sessionUserId) {
+        try {
+            // 🧹 ASPIRADORA PROFUNDA: Esta función destruye cualquier undefined, null o hueco fantasma
+            const deepClean = (obj) => {
+                if (Array.isArray(obj)) {
+                    // Filtra huecos vacíos y limpia cada elemento por dentro
+                    return obj
+                        .filter(item => item !== null && item !== undefined)
+                        .map(deepClean);
+                } else if (obj !== null && typeof obj === 'object') {
+                    // Reconstruye el objeto omitiendo las propiedades que dicen "undefined"
+                    return Object.keys(obj).reduce((acc, key) => {
+                        if (obj[key] !== undefined) {
+                            acc[key] = deepClean(obj[key]);
+                        }
+                        return acc;
+                    }, {});
                 }
-            }
-        });
+                return obj;
+            };
+
+            // 1. Pasamos tu agenda por la aspiradora
+            const ultraCleanTasks = deepClean(e.detail);
+            
+            console.log("Intentando sincronizar con Firebase... Peso del array:", JSON.stringify(ultraCleanTasks).length, "bytes");
+            
+            // 2. ¡IMPORTANTE! Enviamos ultraCleanTasks a la nube, NO e.detail
+            await setDoc(doc(db, "users", sessionUserId), { 
+                tasks: ultraCleanTasks, 
+                lastSync: new Date().toISOString() 
+            });
+            
+            console.log("✅ Sincronización exitosa");
+        } catch (error) {
+            console.error("❌ ERROR CRÍTICO DE FIREBASE:", error.code, error.message);
+            alert(`Error al guardar en la nube: ${error.message}\nRevisa la consola (F12) para más detalles.`);
+        }
+    }
+});
         
     </script>
 </body>
