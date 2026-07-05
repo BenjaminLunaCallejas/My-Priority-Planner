@@ -174,11 +174,11 @@
                 <div class="grid grid-cols-2 gap-2 p-2 bg-slate-900/50 rounded border border-slate-700">
                     <div class="flex flex-col">
                         <label class="text-[9px] text-sky-400 font-bold uppercase">Fecha de Inicio</label>
-                        <input type="date" id="taskStartDate" class="bg-transparent text-white text-[10px] outline-none" style="color-scheme: dark;">
+                       <input type="text" id="taskStartDate" class="bg-transparent text-white text-[10px] outline-none">
                     </div>
                     <div class="flex flex-col">
                         <label class="text-[9px] text-red-400 font-bold uppercase">Fecha de Entrega</label>
-                        <input type="date" id="taskDueDate" class="bg-transparent text-white text-[10px] outline-none" style="color-scheme: dark;">
+                        <input type="text" id="taskDueDate" class="bg-transparent text-white text-[10px] outline-none">
                     </div>
                 </div>
 
@@ -238,7 +238,7 @@
                     </div>
                     <div class="flex flex-col">
                         <label class="text-[9px] text-red-400 font-bold uppercase">Fecha de Entrega</label>
-                        <input type="date" id="subDueDate" class="bg-transparent text-white text-[10px] outline-none" style="color-scheme: dark;">
+                        <input type="text" id="subDueDate" class="bg-transparent text-white text-[10px] outline-none">
                     </div>
                 </div>
                 
@@ -323,7 +323,7 @@
             <div class="bg-slate-900/50 p-3 rounded-lg border border-slate-700 mb-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between shrink-0">
                 <div class="flex flex-col">
                     <label class="text-[10px] text-amber-400 font-bold uppercase">Fecha de Inicio de Reorganización</label>
-                    <input type="date" id="reorderStartDate" class="bg-transparent text-white text-sm outline-none mt-1 border-b border-slate-600 focus:border-amber-400 pb-0.5" style="color-scheme: dark;">
+                    <input type="text" id="reorderStartDate" class="bg-transparent text-white text-sm outline-none mt-1 border-b border-slate-600 focus:border-amber-400 pb-0.5">
                 </div>
                 <button onclick="executeParetoReordering()" class="w-full sm:w-auto bg-amber-600 hover:bg-amber-500 text-white font-bold px-6 py-2.5 rounded-lg transition text-sm shadow-md flex items-center justify-center gap-2">🚀 Reestructurar Calendario</button>
             </div>
@@ -334,11 +334,11 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            flatpickr('input[type="date"]', {
+            flatpickr('#taskStartDate, #taskDueDate, #subStartDate, #subDueDate, #reorderStartDate', {
                 locale: "es",           
                 theme: "dark",          
                 dateFormat: "Y-m-d",    
-                disableMobile: "true",  
+                 
                 monthSelectorType: "static" 
             });
         });
