@@ -1137,16 +1137,17 @@ getFlat(window.tasks).forEach(t => {
         });
 
 window.addEventListener('tasksUpdated', async (e) => {
-    if (sessionUserId) {
-        try {
-            await setDoc(doc(db, "users", sessionUserId), { tasks: e.detail, lastSync: new Date().toISOString() });
-            console.log("Estado: Sincronización exitosa con Firebase Firestore.");
-        } catch (error) {
-            console.error("Fallo crítico de sincronización en la nube:", error);
-            alert("Atención: Hubo un error al guardar en la nube. Los cambios solo están de forma temporal en este dispositivo.");
-        }
-    }
-});
+            if (sessionUserId) {
+                try {
+                    console.log("Intentando sincronizar con Firebase... Peso del array:", JSON.stringify(e.detail).length, "bytes");
+                    await setDoc(doc(db, "users", sessionUserId), { tasks: e.detail, lastSync: new Date().toISOString() });
+                    console.log("✅ Sincronización exitosa");
+                } catch (error) {
+                    console.error("❌ ERROR CRÍTICO DE FIREBASE:", error.code, error.message);
+                    alert(`Error al guardar en la nube: ${error.message}\nRevisa la consola (F12) para más detalles.`);
+                }
+            }
+        });
         
     </script>
 </body>
