@@ -92,7 +92,13 @@
             }
         }
     </style>
-</head>
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/es.js"></script>
+    
+    </head>
 <body class="p-4 md:p-6 h-screen flex flex-col lg:flex-row view-day lg:gap-6">
 
     <div id="authOverlay" class="fixed inset-0 flex flex-col justify-center items-center">
@@ -325,6 +331,18 @@
             <div id="paretoTasksContainer" class="overflow-y-auto space-y-2 flex-grow pr-2 scrollbar-thin"></div>
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            flatpickr('input[type="date"]', {
+                locale: "es",           
+                theme: "dark",          
+                dateFormat: "Y-m-d",    
+                disableMobile: "true",  
+                monthSelectorType: "static" 
+            });
+        });
+    </script>
 
     <script>
         window.tasks = JSON.parse(localStorage.getItem('priorityTasksPro')) || [];
