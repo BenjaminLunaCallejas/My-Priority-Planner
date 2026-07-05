@@ -1143,7 +1143,7 @@ window.addEventListener('tasksUpdated', async (e) => {
             console.log("Estado: Sincronización exitosa con Firebase Firestore.");
         } catch (error) {
             console.error("Fallo crítico de sincronización en la nube:", error);
-            alert("Atención: Hubo un error al guardar en la nube. Los cambios solo están de forma temporal en este dispositivo. Revise la consola (F12) para detalles técnicos.");
+            alert("Atención: Hubo un error al guardar en la nube. Los cambios solo están de forma temporal en este dispositivo.");
         }
     }
 });
