@@ -1122,16 +1122,25 @@ getFlat(window.tasks).forEach(t => {
         document.getElementById('btnLogin').onclick = () => signInWithPopup(auth, provider);
         document.getElementById('btnLogout').onclick = () => signOut(auth).then(() => location.reload());
 
-        onAuthStateChanged(auth, async (user) => {
+onAuthStateChanged(auth, async (user) => {
             if (user) {
                 sessionUserId = user.uid;
                 document.getElementById('authOverlay').classList.add('hidden');
                 document.getElementById('userProfile').classList.remove('hidden');
                 document.getElementById('userAvatar').src = user.photoURL;
+                
                 const docSnap = await getDoc(doc(db, "users", user.uid));
                 if (docSnap.exists() && docSnap.data().tasks) {
                     window.tasks = docSnap.data().tasks;
-                    saveAndRender();
+                    
+                    // 🚀 SOLUCIÓN: Actualizamos la pantalla y memoria local, 
+                    // pero SIN disparar el evento que re-escribe en Firebase.
+                    localStorage.setItem('priorityTasksPro', JSON.stringify(window.tasks));
+                    renderKanban();
+                    renderCompleted();
+                    if(!document.getElementById('listModal').classList.contains('hidden')) {
+                        renderListView();
+                    }
                 }
             }
         });
