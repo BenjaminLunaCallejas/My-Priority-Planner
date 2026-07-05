@@ -457,7 +457,7 @@ function changeView(view) {
 
             if (editId) {
                 recursiveAction(window.tasks, parseInt(editId), (list, idx) => {
-                    const oldSubtasks = list[idx].subtasks;
+                    const oldSubtasks = list[idx].subtasks || [];
                     const oldCompletedDates = list[idx].completedDates || [];
                     list[idx] = {...taskData, id: parseInt(editId), subtasks: oldSubtasks, completedDates: oldCompletedDates};
                 });
@@ -1155,6 +1155,8 @@ onAuthStateChanged(auth, async (user) => {
 window.addEventListener('tasksUpdated', async (e) => {
             if (sessionUserId) {
                 try {
+                    // 🛡️ EL ESCUDO: Esta línea purifica tu agenda y elimina cualquier 'undefined' escondido
+            const cleanTasks = JSON.parse(JSON.stringify(e.detail));
                     console.log("Intentando sincronizar con Firebase... Peso del array:", JSON.stringify(e.detail).length, "bytes");
                     await setDoc(doc(db, "users", sessionUserId), { tasks: e.detail, lastSync: new Date().toISOString() });
                     console.log("✅ Sincronización exitosa");
